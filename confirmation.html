@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#173a25">
+  <meta name="description" content="Share your delivery details with Ayurélle Organics to prepare your order.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Ayurélle Organics">
+  <meta property="og:title" content="Checkout | Ayurélle Organics">
+  <meta property="og:description" content="Share your delivery details with Ayurélle Organics to prepare your order.">
+  <meta property="og:image" content="images/logo.jpeg" data-brand-og-image>
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="images/logo.jpeg" data-brand-twitter-image>
+  <title>Order confirmation | Ayurélle Organics</title>
+  <link rel="icon" href="images/logo.jpeg" type="image/jpeg" data-brand-favicon>
+  <link rel="apple-touch-icon" href="images/logo.jpeg" data-brand-apple-icon>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-page="confirmation">
+
+<header class="site-header" id="siteHeader">
+  <div class="header-inner page-wrap">
+    <button class="mobile-menu-toggle icon-button" type="button" data-menu-toggle aria-label="Open navigation" aria-expanded="false" aria-controls="mobileNav">
+      <svg class="menu-svg" viewBox="0 0 40 40" role="img" aria-label="Menu" focusable="false">
+        <path class="menu-line menu-line-top" d="M9 13H31" />
+        <path class="menu-line menu-line-middle" d="M9 20H31" />
+        <path class="menu-line menu-line-bottom" d="M9 27H31" />
+      </svg>
+    </button>
+    <a class="brand-lockup" href="index.html" aria-label="Ayurélle Organics home">
+      <img data-image="logoMark" src="images/ayurelle-mark.svg" alt="Ayurélle Organics logo" class="brand-symbol">
+      <span class="brand-type"><span class="brand-name">Ayurélle</span><span class="brand-subtitle">ORGANICS</span></span>
+    </a>
+    <nav class="main-nav" aria-label="Main navigation">
+      <a data-nav="home" href="index.html">Home</a><a data-nav="shop" href="shop.html">Shop</a><a data-nav="about" href="about.html">Our Story</a><a data-nav="contact" href="contact.html">Contact</a>
+    </nav>
+    <div class="header-actions">
+      <button class="header-search" type="button" data-search-toggle aria-label="Open product search" aria-expanded="false"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i></button>
+      <a class="cart-link" href="cart.html" aria-label="Shopping bag"><i class="fa-solid fa-bag-shopping" aria-hidden="true"></i><span class="cart-count" data-cart-count>0</span></a>
+    </div>
+  </div>
+  <nav class="mobile-nav" id="mobileNav" aria-label="Mobile navigation" data-mobile-nav>
+    <a data-nav="home" href="index.html">Home</a><a data-nav="shop" href="shop.html">Shop all products</a><a data-nav="about" href="about.html">Our story</a><a data-nav="contact" href="contact.html">Contact</a>
+  </nav>
+</header>
+
+<main class="confirmation-page page-wrap">
+  <section class="confirmation-card" data-confirmation-root>
+    <div class="confirmation-emblem"><span class="confirmation-spinner" data-confirmation-spinner></span><i class="fa-solid fa-check" data-confirmation-check hidden aria-hidden="true"></i></div>
+    <p class="eyebrow confirmation-eyebrow"><span></span> SECURE PAYMENT CHECK</p>
+    <h1 data-confirmation-title>Confirming your <em>payment.</em></h1>
+    <p class="confirmation-message" data-confirmation-message>We're checking the payment directly with Paystack. Please keep this page open for a moment.</p>
+    <div class="confirmation-error" data-confirmation-error hidden></div>
+    <div class="receipt-panel" data-receipt-panel hidden>
+      <div class="receipt-heading"><div><span>AYURÉLLE ORGANICS</span><h2>Payment receipt</h2></div><span class="receipt-paid">PAID</span></div>
+      <div class="receipt-reference"><span>ORDER REFERENCE</span><strong data-receipt-reference></strong><small data-receipt-date></small></div>
+      <div class="receipt-customer" data-receipt-customer></div>
+      <div class="receipt-items" data-receipt-items></div>
+      <div class="receipt-totals"><div><span>Subtotal</span><strong data-receipt-subtotal></strong></div><div><span>Processing fee</span><strong data-receipt-fee></strong></div><div class="receipt-total"><span>Paid today</span><strong data-receipt-total></strong></div></div>
+      <p class="receipt-delivery-note">Delivery fee is not included in this receipt. The team will estimate delivery after reviewing your location.</p>
+      <div class="receipt-actions"><button type="button" class="button button-dark" data-download-receipt><i class="fa-solid fa-file-pdf" aria-hidden="true"></i> Download PDF receipt</button><a class="button button-outline" href="shop.html">Continue shopping <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></div>
+    </div>
+    <div class="confirmation-next" data-confirmation-next hidden><i class="fa-solid fa-envelope-open-text" aria-hidden="true"></i><p>A confirmation email will be sent to the email address provided at checkout. You can also contact the team if you need help.</p><a href="https://wa.me/233547446264" target="_blank" rel="noopener noreferrer">Contact Ayurélle on WhatsApp <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a></div>
+  </section>
+</main>
+<div class="toast-region" data-toast-region aria-live="polite" aria-atomic="true"></div>
+
+<footer class="site-footer">
+  <div class="footer-top page-wrap">
+    <div class="footer-brand-block">
+      <a class="brand-lockup brand-lockup-light" href="index.html" aria-label="Ayurélle Organics home">
+        <img data-image="logoMark" src="images/ayurelle-mark.svg" alt="Ayurélle Organics logo" class="brand-symbol">
+        <span class="brand-type"><span class="brand-name">Ayurélle</span><span class="brand-subtitle">ORGANICS</span></span>
+      </a>
+      <p class="footer-motto">Feed Your Scalp.<br><em>Flourish Your Crown.</em></p>
+      <p class="footer-intro">Thoughtful hair care for the crown you call your own.</p>
+      <div class="social-links" aria-label="Contact and social links">
+        <a href="https://www.snapchat.com/add/ayurorganics" target="_blank" rel="noopener noreferrer" aria-label="Ayurélle on Snapchat" title="Snapchat"><i class="fa-brands fa-snapchat" aria-hidden="true"></i></a>
+        <a href="https://wa.me/233547446264" target="_blank" rel="noopener noreferrer" aria-label="Chat with Ayurélle on WhatsApp" title="WhatsApp"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i></a>
+        <a href="mailto:ayurelleorganics@yahoo.com" aria-label="Email Ayurélle" title="Email"><i class="fa-regular fa-envelope" aria-hidden="true"></i></a>
+      </div>
+    </div>
+    <div class="footer-column"><h2>Explore</h2><a href="shop.html">Shop all products</a><a href="shop.html?category=sets">Complete care sets</a><a href="about.html">Our story</a><a href="contact.html">Contact</a></div>
+    <div class="footer-column"><h2>Customer care</h2><a href="contact.html#delivery">Delivery information</a><a href="contact.html#returns">Returns and exchanges</a><a href="contact.html#faq">Frequently asked questions</a><a href="cart.html">Your shopping bag</a></div>
+    <div class="footer-column footer-contact"><h2>Come say hello</h2><p>North Kaneshie<br>Accra, Ghana</p><a href="tel:+233547446264">054 744 6264</a><a href="mailto:ayurelleorganics@yahoo.com">ayurelleorganics@yahoo.com</a><a href="https://www.snapchat.com/add/ayurorganics" target="_blank" rel="noopener noreferrer">@ayurorganics on Snapchat</a></div>
+  </div>
+  <div class="footer-bottom page-wrap">
+    <span>© <span data-year></span> Ayurélle Organics. All rights reserved.</span>
+    <span class="footer-credit">Website by <a href="https://www.snapchat.com/add/jvo_james" target="_blank" rel="noopener noreferrer">jvo_james <i class="fa-brands fa-snapchat" aria-hidden="true"></i></a></span>
+    <a class="back-to-top" href="#siteHeader">Back to top <i class="fa-solid fa-arrow-up" aria-hidden="true"></i></a>
+  </div>
+</footer>
+
+<script src="images.js"></script><script src="script.js"></script><script src="site-enhancements.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script><script src="confirmation.js"></script>
+</body></html>

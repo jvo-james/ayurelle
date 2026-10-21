@@ -217,6 +217,8 @@
   let searchTerm = '';
   let sortMode = 'featured';
   let toastTimeout = null;
+  let currentGalleryIndex = 0;
+  let currentGalleryImages = [];
 
   const currency = value => `GH₵${Number(value || 0).toFixed(2)}`;
   const imageFor = (slug, color) => {
@@ -343,15 +345,13 @@
     const cardImage = imageFor(product.slug, defaultColor);
     const priceText = cardPrice(product);
     const sizeText = cardSize(product);
-    const label = product.badge || categoryLabel(product);
     return `<article class="product-card" data-product-card data-product-slug="${escapeHtml(product.slug)}">
       <a class="product-card-media" href="${productHref(product.slug)}" aria-label="View ${escapeHtml(product.name)}">
         <img src="${escapeHtml(cardImage)}" data-card-image alt="${escapeHtml(product.name)} image placeholder" loading="lazy">
-        <span class="product-card-label">${escapeHtml(label)}</span>
         <span class="product-card-open" aria-hidden="true"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>
       </a>
       <div class="product-card-copy">
-        <div class="product-card-topline"><span>${escapeHtml(categoryLabel(product))}</span>${product.variants ? `<span>${escapeHtml(sizeText)}</span>` : ''}</div>
+        <div class="product-card-topline">${product.variants ? `<span>${escapeHtml(sizeText)}</span>` : ''}</div>
         <a class="product-card-title" href="${productHref(product.slug)}">${escapeHtml(product.name)}</a>
         <p class="product-card-description">${escapeHtml(product.short)}</p>
         <div class="product-card-price-line"><span>${escapeHtml(priceText)}</span>${!product.variants && !product.colorOptions ? `<small>${escapeHtml(product.size || '')}</small>` : ''}</div>
@@ -385,7 +385,12 @@
     const sort = document.querySelector('[data-shop-sort]');
     const resultsCount = document.querySelector('[data-results-count]');
     const empty = document.querySelector('[data-shop-empty]');
-    const tabs = [...document.querySelectorAll('[data-category][data-category-filters]')];
+    const filterHost = document.querySelector('[data-category-filters]');
+
+    function renderCategoryFilters() {
+      if (!filterHost) return;
+      filterHost.innerHTML = `<button type="button" class="filter-chip" data-category="all">All products <span data-category-count="all">${PRODUCTS.length}</span></button>${Object.entries(CATEGORY_LABELS).map(([slug, label]) => `<button type="button" class="filter-chip" data-category="${escapeHtml(slug)}">${escapeHtml(label)}</button>`).join('')}`;
+    }
 
     function updateActiveFilter() {
       document.querySelectorAll('[data-category-filters] [data-category]').forEach(button => {
@@ -415,24 +420,25 @@
 
     const params = new URLSearchParams(window.location.search);
     const initialCategory = params.get('category');
-    if (['sets', 'hair', 'mens', 'tools'].includes(initialCategory)) selectedCategory = initialCategory;
+    if (initialCategory && Object.prototype.hasOwnProperty.call(CATEGORY_LABELS, initialCategory)) selectedCategory = initialCategory;
     const initialSearch = params.get('q');
     if (initialSearch) {
       searchTerm = initialSearch;
       if (search) search.value = initialSearch;
     }
     if (params.get('focus') === 'search' && search) window.setTimeout(() => search.focus(), 150);
+    renderCategoryFilters();
     updateGrid();
 
-    document.querySelectorAll('[data-category-filters] [data-category]').forEach(button => {
-      button.addEventListener('click', () => {
-        selectedCategory = button.dataset.category;
-        const url = new URL(window.location.href);
-        if (selectedCategory === 'all') url.searchParams.delete('category');
-        else url.searchParams.set('category', selectedCategory);
-        history.replaceState({}, '', url);
-        updateGrid();
-      });
+    filterHost?.addEventListener('click', event => {
+      const button = event.target.closest('[data-category]');
+      if (!button) return;
+      selectedCategory = button.dataset.category;
+      const url = new URL(window.location.href);
+      if (selectedCategory === 'all') url.searchParams.delete('category');
+      else url.searchParams.set('category', selectedCategory);
+      history.replaceState({}, '', url);
+      updateGrid();
     });
     if (search) search.addEventListener('input', () => { searchTerm = search.value; updateGrid(); });
     if (sort) sort.addEventListener('change', () => { sortMode = sort.value; updateGrid(); });
@@ -469,16 +475,36 @@
     if (node) node.textContent = value || '';
   }
 
+  function galleryFor(slug, color = null) {
+    const variantSet = IMAGES.variants && IMAGES.variants[slug];
+    const chosenColor = color || (variantSet && variantSet.default);
+    const colorEntry = variantSet && variantSet.colors && variantSet.colors[chosenColor];
+    const variantGallery = colorEntry && Array.isArray(colorEntry.gallery) ? colorEntry.gallery : null;
+    const gallery = variantGallery || (IMAGES.galleries && IMAGES.galleries[slug]) || [];
+    const fallback = imageFor(slug, color);
+    return [...new Set([...(gallery || []), fallback].filter(Boolean))];
+  }
+
+  function renderProductGallery(slug, color = null, chosenIndex = 0) {
+    const mainImage = document.querySelector('[data-detail-image]');
+    const thumbnails = document.querySelector('[data-product-gallery]');
+    if (!mainImage) return;
+    currentGalleryImages = galleryFor(slug, color);
+    currentGalleryIndex = Math.min(Math.max(0, chosenIndex), Math.max(0, currentGalleryImages.length - 1));
+    mainImage.src = currentGalleryImages[currentGalleryIndex] || imageFor(slug, color);
+    mainImage.alt = `${currentProduct ? currentProduct.name : 'Ayurélle product'} product view ${currentGalleryIndex + 1}`;
+    setText('[data-gallery-index]', `${currentGalleryIndex + 1} / ${Math.max(1, currentGalleryImages.length)}`);
+    if (thumbnails) {
+      thumbnails.innerHTML = currentGalleryImages.length > 1 ? currentGalleryImages.map((src, index) => `<button type="button" class="gallery-thumb${index === currentGalleryIndex ? ' is-active' : ''}" data-gallery-index-button="${index}" aria-label="View product image ${index + 1}" aria-pressed="${index === currentGalleryIndex}"><img src="${escapeHtml(src)}" alt="" loading="lazy"></button>`).join('') : '';
+    }
+  }
+
   function updateDetailPrice() {
     if (!currentProduct) return;
     const selectedVariant = chosenSize(currentProduct, currentSizeVariant);
     const price = selectedVariant ? selectedVariant.price : currentProduct.price;
     setText('[data-product-price]', currency(price));
-    const image = document.querySelector('[data-detail-image]');
-    if (image) {
-      image.src = imageFor(currentProduct.slug, currentColor || defaultColorFor(currentProduct.slug));
-      image.alt = `${currentProduct.name} image placeholder${currentColor ? `, ${currentColor}` : ''}`;
-    }
+    renderProductGallery(currentProduct.slug, currentColor || defaultColorFor(currentProduct.slug), currentGalleryIndex);
   }
 
   function renderSetContents(product) {
@@ -500,7 +526,7 @@
       const size = item.variants ? item.variants.map(variant => variant.label).join(' / ') : item.size;
       return `<button type="button" class="set-item-card" data-open-product="${escapeHtml(item.slug)}" aria-label="View details for ${escapeHtml(label)}">
         <span class="set-item-image"><img src="${escapeHtml(imageFor(item.slug, defaultColorFor(item.slug)))}" alt="${escapeHtml(label)} image placeholder" loading="lazy"></span>
-        <span class="set-item-copy"><span class="set-item-number">ITEM ${(index + 1).toString().padStart(2, '0')}</span><strong>${escapeHtml(label)}</strong><small>${escapeHtml(size || categoryLabel(item))} · ${escapeHtml(cardPrice(item))}</small></span>
+        <span class="set-item-copy"><span class="set-item-number">ITEM ${index + 1}</span><strong>${escapeHtml(label)}</strong><small>${escapeHtml(size || categoryLabel(item))} · ${escapeHtml(cardPrice(item))}</small></span>
         <span class="set-item-arrow"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></span>
       </button>`;
     }).join('');
@@ -527,13 +553,11 @@
     currentColor = defaultColorFor(currentProduct.slug);
     currentQty = 1;
 
-    const mainImage = document.querySelector('[data-detail-image]');
-    if (mainImage) {
-      mainImage.src = imageFor(currentProduct.slug, currentColor);
-      mainImage.alt = `${currentProduct.name} image placeholder`;
-    }
+    renderProductGallery(currentProduct.slug, currentColor, 0);
     setText('[data-product-breadcrumb]', currentProduct.name);
-    setText('[data-product-category]', categoryLabel(currentProduct).toUpperCase());
+    setText('[data-product-category]', '');
+    const ingredientSection = document.querySelector('[data-ingredients-section]');
+    if (ingredientSection) ingredientSection.hidden = currentProduct.category === 'sets';
     setText('[data-product-title]', currentProduct.name);
     setText('[data-product-short]', currentProduct.short);
     setText('[data-product-description]', currentProduct.description);
@@ -542,13 +566,18 @@
     setText('[data-product-directions]', currentProduct.directions);
     setText('[data-product-caution]', currentProduct.caution);
     setText('[data-product-qty]', '1');
-    setText('[data-gallery-index]', currentProduct.colorOptions ? `01 / ${Object.keys((IMAGES.variants[currentProduct.slug] || {}).colors || {}).length}` : '01 / 01');
+    setText('[data-gallery-index]', currentProduct.colorOptions ? `1 / ${Object.keys((IMAGES.variants[currentProduct.slug] || {}).colors || {}).length}` : '1 / 1');
     document.title = `${currentProduct.name} | Ayurélle Organics`;
     const titleMeta = document.querySelector('meta[property="og:title"]');
     if (titleMeta) titleMeta.content = `${currentProduct.name} | Ayurélle Organics`;
     const shortMeta = document.querySelector('meta[name="description"]');
     if (shortMeta) shortMeta.content = currentProduct.short;
     const detailOptions = document.querySelector('[data-product-options]');
+    document.querySelector('[data-product-gallery]')?.addEventListener('click', event => {
+      const thumb = event.target.closest('[data-gallery-index-button]');
+      if (!thumb) return;
+      renderProductGallery(currentProduct.slug, currentColor || defaultColorFor(currentProduct.slug), Number(thumb.dataset.galleryIndexButton));
+    });
     if (detailOptions) detailOptions.innerHTML = renderOptions(currentProduct, 'detail', currentSizeVariant, currentColor);
     const highlights = document.querySelector('[data-product-highlights]');
     if (highlights) highlights.innerHTML = (currentProduct.highlights || []).map(item => `<div class="benefit-item"><i class="fa-solid fa-check" aria-hidden="true"></i><span>${escapeHtml(item)}</span></div>`).join('');
@@ -581,14 +610,12 @@
     detailOptions?.addEventListener('pointerover', event => {
       const button = event.target.closest('[data-detail-color]');
       if (!button || !currentProduct) return;
-      const image = document.querySelector('[data-detail-image]');
-      if (image) image.src = imageFor(currentProduct.slug, button.dataset.detailColor);
+      renderProductGallery(currentProduct.slug, button.dataset.detailColor, 0);
     });
     detailOptions?.addEventListener('pointerout', event => {
       const button = event.target.closest('[data-detail-color]');
       if (!button || button.contains(event.relatedTarget) || !currentProduct) return;
-      const image = document.querySelector('[data-detail-image]');
-      if (image) image.src = imageFor(currentProduct.slug, currentColor || defaultColorFor(currentProduct.slug));
+      renderProductGallery(currentProduct.slug, currentColor || defaultColorFor(currentProduct.slug), 0);
     });
     detailOptions?.addEventListener('click', event => {
       const button = event.target.closest('[data-detail-color]');
@@ -885,7 +912,47 @@
     }));
   }
 
-  function initialise() {
+  async function loadRemoteCatalogue() {
+    try {
+      const response = await fetch('/.netlify/functions/catalogue', { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
+      if (!response.ok) return;
+      const payload = await response.json();
+      if (!Array.isArray(payload.products)) return;
+      const localBySlug = new Map(PRODUCTS.map(item => [item.slug, item]));
+      const merged = payload.products.filter(item => item && item.slug && item.active !== false).map(remote => {
+        const base = localBySlug.get(remote.slug) || {};
+        const normalized = { ...base, ...remote };
+        if (remote.useRepositoryImages) {
+          if (base.slug && IMAGES.products && IMAGES.products[base.slug]) IMAGES.products[remote.slug] = IMAGES.products[base.slug];
+        } else if (Array.isArray(remote.images) && remote.images.length) {
+          IMAGES.products[remote.slug] = remote.images[0];
+          IMAGES.galleries = IMAGES.galleries || {};
+          IMAGES.galleries[remote.slug] = remote.images;
+        } else if (remote.imageUrl) {
+          IMAGES.products[remote.slug] = remote.imageUrl;
+        }
+        if (remote.imageVariants && remote.imageVariants.colors) {
+          IMAGES.variants = IMAGES.variants || {};
+          IMAGES.variants[remote.slug] = remote.imageVariants;
+        }
+        return normalized;
+      });
+      PRODUCTS.splice(0, PRODUCTS.length, ...merged);
+      bySlug.clear();
+      PRODUCTS.forEach(item => bySlug.set(item.slug, item));
+      if (Array.isArray(payload.categories)) {
+        Object.keys(CATEGORY_LABELS).forEach(slug => delete CATEGORY_LABELS[slug]);
+        payload.categories.forEach(category => {
+          if (category && category.slug && category.name) CATEGORY_LABELS[category.slug] = category.name;
+        });
+      }
+    } catch (error) {
+      // The local catalogue remains a fully usable fallback when Firebase is not configured.
+    }
+  }
+
+  async function initialise() {
+    await loadRemoteCatalogue();
     applyBrandImages();
     initialiseHeader();
     updateCartCount();
@@ -899,11 +966,12 @@
     initialiseCheckout();
     initialiseContact();
     initialiseCardColorInteractions();
+    window.dispatchEvent(new CustomEvent('ayurelle:catalogue-ready'));
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initialise);
   else initialise();
 
   // Expose a small read-only catalogue helper for later customisation and debugging.
-  window.AYURELLE_CATALOGUE = { list: PRODUCTS, get: slug => bySlug.get(slug) || null };
+  window.AYURELLE_CATALOGUE = { list: PRODUCTS, get: slug => bySlug.get(slug) || null, categories: CATEGORY_LABELS, currency };
 })();

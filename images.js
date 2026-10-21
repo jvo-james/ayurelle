@@ -5,7 +5,7 @@
   Replace concept photography with approved Ayurélle product photos before launch.
 */
 window.AYURELLE_IMAGES = {
-  logoMark: 'images/logo.jpeg',
+  logoMark: 'images/logo.jpeg', // Replace this one value to change the round header logo and browser icon.
   heroBackground: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=2400&q=90',
   brandStory: 'https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=1500&q=88',
   newsletter: 'https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=1200&q=86',
@@ -32,7 +32,7 @@ window.AYURELLE_IMAGES = {
     'ayur-beard-serum': 'images/ayur-beard-serum.jpeg',
     'derma-roller': 'images/derma-roller.jpeg',
     'satin-bonnet': 'images/bonnet-red.jpg',
-    'steaming-cap': 'images/steam-cap-pink.jpeg',
+    'steaming-cap': 'images/steam-cap-pink.jpg',
     'spray-bottle': 'images/spray-bottle.jpeg'
   },
   variants: {
@@ -48,9 +48,13 @@ window.AYURELLE_IMAGES = {
     'steaming-cap': {
       default: 'pink',
       colors: {
-        pink: { label: 'Pink', swatch: '#e8a4b8', image: 'images/steam-cap-pink.jpg' },
-        red: { label: 'Red', swatch: '#a52d32', image: 'images/steam-cap-red.jpg' }
+        pink: { label: 'Pink', swatch: '#e8a4b8', image: 'images/steam-cap-pink.jpg', gallery: ['images/steam-cap-pink.jpg', 'images/steam-cap-pink-item.jpg'] },
+        red: { label: 'Red', swatch: '#a52d32', image: 'images/steam-cap-red.jpg', gallery: ['images/steam-cap-red.jpg', 'images/steam-cap-red-item.jpg'] }
       }
     }
+  },
+  galleries: {
+    'ayur-hair-growth-oil': ['images/ayur-hair-growth-oil.jpeg', 'images/ayur-hair-growth-oil-multiple.jpeg'],
+    'ayur-hair-growth-butter': ['images/ayur-hair-growth-butter.jpeg', 'images/ayur-hair-growth-butter-multiple.jpeg']
   }
 };
