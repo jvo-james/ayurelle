@@ -11,7 +11,7 @@ window.AYURELLE_IMAGES = {
   newsletter: 'https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=1200&q=86',
   detailAccent: 'https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=1100&q=85',
   categories: {
-    sets: 'images/sets.jpeg',
+    sets: 'images/sets.jpg',
     hair: 'https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?auto=format&fit=crop&w=1000&q=86',
     mens: 'https://images.unsplash.com/photo-1621607512214-68297480165e?auto=format&fit=crop&w=1000&q=86',
     tools: 'images/spray-bottle.svg'
