@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 900" role="img" aria-label="Pink satin bonnet placeholder">
+  <defs><linearGradient id="fabric" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c47b92"/><stop offset=".28" stop-color="#e8a4b8"/><stop offset=".55" stop-color="#c47b92"/><stop offset=".78" stop-color="#e8a4b8"/><stop offset="1" stop-color="#e8a4b8"/></linearGradient><radialGradient id="shadow"><stop offset="0" stop-color="#7b806d" stop-opacity=".22"/><stop offset="1" stop-color="#7b806d" stop-opacity="0"/></radialGradient></defs>
+  <rect width="800" height="900" fill="#fff4f6"/><circle cx="400" cy="396" r="270" fill="#fffefa" opacity=".52"/><ellipse cx="400" cy="685" rx="235" ry="38" fill="url(#shadow)"/>
+  <path d="M179 467C178 333 262 220 397 209C535 198 625 310 625 457C625 542 576 610 505 630L298 630C228 607 181 551 179 467Z" fill="url(#fabric)" stroke="#e8a4b8" stroke-width="5"/>
+  <path d="M181 462C225 499 300 519 400 520C503 521 578 500 624 455" fill="none" stroke="#c47b92" stroke-width="14" stroke-linecap="round" opacity=".9"/>
+  <path d="M222 420C255 317 315 263 385 249M452 247C527 279 573 343 589 418" fill="none" stroke="#fffefa" stroke-width="15" stroke-linecap="round" opacity=".28"/>
+  <path d="M248 566C288 594 338 605 398 607C455 608 507 594 551 564" fill="none" stroke="#c47b92" stroke-width="8" stroke-linecap="round" opacity=".75"/>
+  <text x="400" y="790" fill="#64715e" font-family="Arial,sans-serif" font-size="19" letter-spacing="6" text-anchor="middle">SATIN BONNET / PINK</text>
+  <text x="400" y="825" fill="#8c9386" font-family="Arial,sans-serif" font-size="13" letter-spacing="3" text-anchor="middle">AYURÉLLE ORGANICS / IMAGE PLACEHOLDER</text>
+</svg>

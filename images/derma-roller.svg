@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 900" role="img" aria-label="Derma roller product placeholder">
+  <defs><linearGradient id="handle" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#b58d2c"/><stop offset=".45" stop-color="#f1dc9a"/><stop offset="1" stop-color="#a78029"/></linearGradient><linearGradient id="roller" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d8d8d0"/><stop offset=".45" stop-color="#fffdf7"/><stop offset="1" stop-color="#9eaaa0"/></linearGradient></defs>
+  <rect width="800" height="900" fill="#f5f0e5"/><circle cx="400" cy="390" r="264" fill="#e4e8dc"/><ellipse cx="400" cy="700" rx="190" ry="29" fill="#405542" opacity=".15"/>
+  <g transform="rotate(-18 400 440)">
+    <rect x="365" y="442" width="70" height="250" rx="31" fill="url(#handle)" stroke="#a17c2b" stroke-width="4"/>
+    <path d="M376 465Q400 479 424 465M376 490Q400 503 424 490M376 515Q400 528 424 515" fill="none" stroke="#fff0ba" stroke-width="3" opacity=".8"/>
+    <rect x="341" y="397" width="118" height="53" rx="15" fill="url(#handle)" stroke="#a17c2b" stroke-width="4"/>
+    <rect x="285" y="320" width="230" height="91" rx="43" fill="url(#roller)" stroke="#9ca79d" stroke-width="5"/>
+    <g stroke="#758478" stroke-width="4" stroke-linecap="round">
+      <path d="M310 332V399M332 329V402M354 326V405M376 325V406M398 325V406M420 325V406M442 326V405M464 329V402M486 332V399"/>
+    </g>
+    <path d="M297 345Q400 317 503 345" fill="none" stroke="#fff" stroke-width="7" opacity=".8"/>
+  </g>
+  <text x="400" y="787" fill="#5e6d5b" font-family="Arial,sans-serif" font-size="17" letter-spacing="5" text-anchor="middle">DERMA ROLLER</text><text x="400" y="821" fill="#8c9386" font-family="Arial,sans-serif" font-size="12" letter-spacing="3" text-anchor="middle">PRODUCT IMAGE PLACEHOLDER</text>
+</svg>

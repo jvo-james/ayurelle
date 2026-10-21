@@ -1,7 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 90" fill="none">
-  <rect width="90" height="90" rx="45" fill="#173A25"/>
-  <path d="M24 57C38 49 50 33 59 17C61 35 55 53 40 64C34 68 27 65 24 57Z" fill="#C5A45A"/>
-  <path d="M29 65C35 49 44 39 58 28" stroke="#F6F0E2" stroke-width="2" stroke-linecap="round"/>
-  <path d="M45 43C43 31 35 24 25 21C26 33 33 40 45 43Z" fill="#8B9B70"/>
-  <path d="M34 71H60" stroke="#F6F0E2" stroke-width="1.6" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-label="Ayurélle Organics logo placeholder">
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f1dda0"/><stop offset=".52" stop-color="#c9a13f"/><stop offset="1" stop-color="#ead58c"/></linearGradient>
+  </defs>
+  <circle cx="80" cy="80" r="77" fill="#173a25"/>
+  <circle cx="80" cy="80" r="69" fill="none" stroke="url(#gold)" stroke-width="1.5"/>
+  <circle cx="80" cy="80" r="62" fill="none" stroke="#d4b55f" stroke-opacity=".35" stroke-width=".8"/>
+  <path d="M46 109C58 83 69 56 82 37C94 60 105 85 117 109" fill="none" stroke="url(#gold)" stroke-linecap="round" stroke-width="3.2"/>
+  <path d="M60 88C45 76 43 61 44 53C56 58 66 69 68 81M87 60C99 47 110 48 117 50C111 62 101 70 91 72M72 77C66 64 72 48 81 39C88 52 89 64 81 76" fill="none" stroke="url(#gold)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.3"/>
+  <path d="M64 101C75 94 86 94 98 101" fill="none" stroke="#e5cc7c" stroke-linecap="round" stroke-width="1.4"/>
+  <text x="80" y="128" fill="#eed88c" font-family="Georgia,serif" font-size="12" font-style="italic" letter-spacing="2" text-anchor="middle">A.</text>
 </svg>
