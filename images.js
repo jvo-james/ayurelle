@@ -17,12 +17,12 @@ window.AYURELLE_IMAGES = {
     tools: 'images/spray-bottle.svg'
   },
   products: {
-    'full-hair-growth-set': 'images/set.jpeg',
-    'deluxe-set': 'images/deluxe.jpeg',
-    'starter-set': 'images/starter.jpeg',
+    'full-hair-growth-set': 'images/set.jpg',
+    'deluxe-set': 'images/deluxe.jpg',
+    'starter-set': 'images/starter.jpg',
     'ayur-shampoo': 'images/ayur-shampoo.jpeg',
-    'ayur-deep-conditioner': 'images/ayur-deep-conditioner.jpeg',
-    'ayur-rinse-out-conditioner': 'images/ayur-rinse-out-conditioner.jpeg',
+    'ayur-deep-conditioner': 'images/ayur-deep-conditioner.jpg',
+    'ayur-rinse-out-conditioner': 'images/ayur-rinse-out-conditioner.jpg',
     'ayur-leave-in-conditioner': 'images/ayur-leave-in-conditioner.jpeg',
     'ayur-silk-protein-mask': 'images/ayur-silk-protein-mask.jpeg',
     'ayur-hair-growth-oil': 'images/ayur-hair-growth-oil.jpeg',
@@ -31,7 +31,7 @@ window.AYURELLE_IMAGES = {
     'ayur-scalp-detox-mist': 'images/ayur-scalp-detox-mist.jpeg',
     'ayur-beard-serum': 'images/ayur-beard-serum.jpeg',
     'derma-roller': 'images/derma-roller.jpeg',
-    'satin-bonnet': 'images/bonnet-red.jpeg',
+    'satin-bonnet': 'images/bonnet-red.jpg',
     'steaming-cap': 'images/steam-cap-pink.jpeg',
     'spray-bottle': 'images/spray-bottle.jpeg'
   },
@@ -39,17 +39,17 @@ window.AYURELLE_IMAGES = {
     'satin-bonnet': {
       default: 'red',
       colors: {
-        black: { label: 'Black', swatch: '#202522', image: 'images/bonnet-black.jpeg' },
-        red: { label: 'Red', swatch: '#a52d32', image: 'images/bonnet-red.jpeg' },
-        purple: { label: 'Purple', swatch: '#76608c', image: 'images/bonnet-purple.jpeg' },
-        pink: { label: 'Pink', swatch: '#e8a4b8', image: 'images/bonnet-pink.jpeg' }
+        black: { label: 'Black', swatch: '#202522', image: 'images/bonnet-black.jpg' },
+        red: { label: 'Red', swatch: '#a52d32', image: 'images/bonnet-red.jpg' },
+        purple: { label: 'Purple', swatch: '#76608c', image: 'images/bonnet-purple.jpg' },
+        pink: { label: 'Pink', swatch: '#e8a4b8', image: 'images/bonnet-pink.jpg' }
       }
     },
     'steaming-cap': {
       default: 'pink',
       colors: {
-        pink: { label: 'Pink', swatch: '#e8a4b8', image: 'images/steam-cap-pink.jpeg' },
-        red: { label: 'Red', swatch: '#a52d32', image: 'images/steam-cap-red.jpeg' }
+        pink: { label: 'Pink', swatch: '#e8a4b8', image: 'images/steam-cap-pink.jpg' },
+        red: { label: 'Red', swatch: '#a52d32', image: 'images/steam-cap-red.jpg' }
       }
     }
   }
