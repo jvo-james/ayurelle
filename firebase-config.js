@@ -5,19 +5,19 @@
   credentials or private API secrets in this file.
 */
 window.AYURELLE_FIREBASE_CONFIG = {
-  apiKey: 'REPLACE_WITH_FIREBASE_WEB_API_KEY',
-  authDomain: 'REPLACE_WITH_PROJECT_ID.firebaseapp.com',
-  projectId: 'REPLACE_WITH_PROJECT_ID',
-  storageBucket: 'REPLACE_WITH_PROJECT_ID.appspot.com',
-  messagingSenderId: 'REPLACE_WITH_SENDER_ID',
-  appId: 'REPLACE_WITH_FIREBASE_APP_ID'
+  apiKey: 'AIzaSyDPp5-AQt5XkCv2TIPwlp8IMR1JLMKzKXo',
+  authDomain: 'ayurelle-organics.firebaseapp.com',
+  projectId: 'ayurelle-organics',
+  storageBucket: 'ayurelle-organics.firebasestorage.app',
+  messagingSenderId: '16381388066',
+  appId: '1:16381388066:web:e2937073527661cf10717b'
 };
 
 /* Informational admin contact list only. Actual access is controlled by the
    admins/{uid} Firestore membership document or admin custom claim, and by
    the matching server-side ADMIN_EMAILS environment variable. */
 window.AYURELLE_ADMIN_CONFIG = {
-  adminEmails: ['REPLACE_WITH_ADMIN_EMAIL']
+  adminEmails: ['jadelstech@gmail.com']
 };
 
 /* Public Cloudinary identifier only. The API secret stays in Netlify env vars. */
