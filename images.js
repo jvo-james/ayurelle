@@ -17,7 +17,7 @@ window.AYURELLE_IMAGES = {
     tools: 'images/spray-bottle.svg'
   },
   products: {
-    'full-hair-growth-set': 'images/set.jpg',
+    'full-hair-growth-set': 'images/sets.jpg',
     'deluxe-set': 'images/deluxe.jpg',
     'starter-set': 'images/starter.jpg',
     'ayur-shampoo': 'images/ayur-shampoo.jpeg',
