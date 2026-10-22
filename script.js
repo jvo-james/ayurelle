@@ -11,18 +11,18 @@
     tools: 'Tools and Accessories'
   };
 
-  // Product descriptions and ingredients are editable draft copy. Confirm every detail with the owner before launch.
+  // Product data is kept in one editable catalogue; ingredients remain blank until entered by the store owner.
   const PRODUCTS = [
     {
       slug: 'full-hair-growth-set', name: 'Full Hair Growth Set', category: 'sets', price: 500, size: '9-piece set', badge: 'Complete care set',
       short: 'A complete collection for cleansing, conditioning, moisture and scalp care.',
       description: 'The Full Hair Growth Set brings nine Ayurélle essentials together in one coordinated collection. It includes wash-day staples, a protein mask, oil, butter, herbal hair tea and a scalp mist, giving you a practical starting point for a consistent hair-care routine.',
-      ingredients: 'This set contains nine individual products with their own ingredient lists. Review each item separately before use. The sample formulas shown on this demo site are placeholders and must be replaced with verified package ingredients.',
+      ingredients: '',
       directions: 'Use each included product according to its own verified label. Follow the shampoo with the conditioner or treatment best suited to your routine. Use leave-in products and styling moisturisers as directed. Introduce new products one at a time if you prefer to observe how your hair responds.',
-      sizeDetail: 'Nine full-size products. Individual size information should be confirmed with the owner.',
-      texture: 'A mix of cleansing, conditioning and leave-in textures', scent: 'Confirm product scents from the final labels',
+      sizeDetail: 'A coordinated nine-piece routine with full-size essentials.',
+      texture: 'Cleansing, conditioning and leave-in essentials', scent: 'Product scent varies by item in the set',
       highlights: ['Nine coordinated hair-care essentials', 'Includes cleansing and conditioning steps', 'Oil and butter for moisture-focused styling', 'Includes hair tea and scalp mist'],
-      caution: 'Confirm all sizes, directions and ingredients before ordering. Discontinue use if irritation occurs.',
+      caution: 'Follow the directions supplied with each item. Discontinue use of any product if irritation occurs.',
       contains: [
         { slug: 'ayur-shampoo' }, { slug: 'ayur-deep-conditioner' }, { slug: 'ayur-rinse-out-conditioner' },
         { slug: 'ayur-leave-in-conditioner' }, { slug: 'ayur-silk-protein-mask' }, { slug: 'ayur-hair-growth-oil' },
@@ -33,12 +33,12 @@
       slug: 'deluxe-set', name: 'Deluxe Set', category: 'sets', price: 350, size: '6-piece set', badge: 'Complete care set',
       short: 'Six core products for a more complete wash-day and between-wash routine.',
       description: 'The Deluxe Set pairs six everyday essentials across cleansing, conditioning and moisture. It is a balanced collection for customers who want a few more care steps together without choosing each product separately.',
-      ingredients: 'This set contains six individual products with separate ingredient lists. The sample formula text on this demo storefront is illustrative only. Check the final package ingredients for each product before use.',
+      ingredients: '',
       directions: 'Follow the directions printed on each individual product. Begin with shampoo then select either the deep conditioner or a regular conditioning step to suit your routine. Apply leave-in products, oil and butter as indicated on their final labels.',
-      sizeDetail: 'Six products. Individual product sizes should be confirmed with the owner.',
-      texture: 'A mix of cleansing, conditioning and moisturising textures', scent: 'Confirm product scents from the final labels',
+      sizeDetail: 'A six-piece collection for a complete routine.',
+      texture: 'Cleansing, conditioning and moisturising essentials', scent: 'Product scent varies by item in the set',
       highlights: ['Six products for a layered routine', 'Includes a deep conditioning step', 'Includes oil and butter for styling', 'Hair tea completes the collection'],
-      caution: 'Confirm all sizes, directions and ingredients before ordering. Discontinue use if irritation occurs.',
+      caution: 'Follow the directions supplied with each item. Discontinue use of any product if irritation occurs.',
       contains: [
         { slug: 'ayur-shampoo' }, { slug: 'ayur-deep-conditioner' }, { slug: 'ayur-leave-in-conditioner' },
         { slug: 'ayur-hair-growth-oil' }, { slug: 'ayur-hair-growth-butter' }, { slug: 'ayur-hair-tea' }
@@ -48,160 +48,160 @@
       slug: 'starter-set', name: 'Starter Set', category: 'sets', price: 200, size: '6-piece set', badge: 'Complete care set',
       short: 'A practical introduction to cleansing, conditioning and everyday moisture.',
       description: 'The Starter Set brings six essentials together for customers building a straightforward hair-care routine. It includes shampoo, rinse-out conditioner, leave-in conditioner, oil, butter and a hair mist for a practical collection of wash-day and styling staples.',
-      ingredients: 'This set contains six individual products with separate ingredient lists. Review the confirmed packaging for the full ingredient list of each included item. Sample formulas on this site are placeholders pending owner approval.',
-      directions: 'Use each item in line with its final packaging directions. Start with cleansing and conditioning, then apply leave-in products and moisturisers as directed. The item referred to as Hair Mist in this set is represented by Ayur Scalp Detox Mist in the draft catalogue and should be confirmed with the owner.',
-      sizeDetail: 'Six products. Individual product sizes should be confirmed with the owner.',
-      texture: 'A mix of cleansing, conditioning and lightweight leave-in products', scent: 'Confirm product scents from the final labels',
+      ingredients: '',
+      directions: 'Use each item in line with its final packaging directions. Start with cleansing and conditioning, then apply leave-in products and moisturisers as directed. The set includes Rosemary Water Spray for a refreshing step between wash days.',
+      sizeDetail: 'A six-piece collection for a complete routine.',
+      texture: 'Cleansing, conditioning and lightweight leave-in essentials', scent: 'Product scent varies by item in the set',
       highlights: ['Six core care products', 'Includes rinse-out and leave-in conditioner', 'Oil and butter for styling support', 'Includes a mist for use between wash days'],
-      caution: 'Confirm all sizes, directions and ingredients before ordering. Discontinue use if irritation occurs.',
+      caution: 'Follow the directions supplied with each item. Discontinue use of any product if irritation occurs.',
       contains: [
         { slug: 'ayur-shampoo' }, { slug: 'ayur-rinse-out-conditioner' }, { slug: 'ayur-leave-in-conditioner' },
-        { slug: 'ayur-hair-growth-oil' }, { slug: 'ayur-hair-growth-butter' }, { slug: 'ayur-scalp-detox-mist', label: 'Hair Mist' }
+        { slug: 'ayur-hair-growth-oil' }, { slug: 'ayur-hair-growth-butter' }, { slug: 'ayur-scalp-detox-mist', label: 'Rosemary Water Spray' }
       ]
     },
     {
       slug: 'ayur-shampoo', name: 'Ayur Shampoo', category: 'hair', price: 50, size: '250 ml', badge: '',
       short: 'A cleansing shampoo for a fresh-feeling scalp and clean, manageable hair.',
-      description: 'A straightforward cleansing step designed to lift everyday product residue and excess oil from the scalp. The sample formula is imagined with mild cleansing agents and conditioning support, for a comfortable wash-day starting point without making medical or hair-growth promises.',
-      ingredients: 'Draft example: Aqua, Decyl Glucoside, Cocamidopropyl Betaine, Aloe Barbadensis Leaf Juice, Glycerin, Panthenol, Hydrolyzed Oat Protein, Citric Acid and Sodium Benzoate.',
+      description: 'A refreshing wash-day cleanser that helps remove everyday buildup and leaves hair feeling clean and ready for conditioning.',
+      ingredients: '',
       directions: 'Wet hair thoroughly. Apply a small amount to the scalp and massage gently with fingertips. Rinse well and repeat if needed according to the final product label. Follow with a conditioner suited to your hair.',
-      sizeDetail: '250 ml', texture: 'Liquid cleanser', scent: 'To be confirmed',
-      highlights: ['Designed for scalp-first cleansing', 'A liquid texture that spreads easily', 'Pairs with conditioner after washing'],
-      caution: 'Avoid contact with eyes. Rinse well if contact occurs. Confirm the final formula and directions before launch.'
+      sizeDetail: '250 ml', texture: 'Liquid cleanser', scent: 'As labelled',
+      highlights: ['A wash-day cleansing step', 'A liquid texture that spreads easily', 'Pairs with conditioner after washing'],
+      caution: 'Avoid contact with eyes. Rinse well if contact occurs.'
     },
     {
-      slug: 'ayur-deep-conditioner', name: 'Ayur Deep Conditioner', category: 'hair', price: 65, size: '250 g', badge: '',
+      slug: 'ayur-deep-conditioner', name: 'Ayur Deep Conditioner', category: 'hair', price: 65, size: '250 ml', badge: '',
       short: 'A richer conditioning treatment for soft feel and easier detangling.',
-      description: 'A richer rinse-off treatment for days when hair needs extra conditioning. The draft positioning focuses on softness, slip and manageability, making it suitable as a deeper conditioning step within a routine.',
-      ingredients: 'Draft example: Aqua, Cetearyl Alcohol, Behentrimonium Methosulfate, Butyrospermum Parkii (Shea) Butter, Glycerin, Aloe Barbadensis Leaf Juice, Panthenol, Cetyl Alcohol, Preservative and Citric Acid.',
+      description: 'A rich rinse-off treatment for wash days when hair needs an extra conditioning step. Work it through the lengths and ends for a softer, more manageable feel.',
+      ingredients: '',
       directions: 'After shampooing, distribute through clean damp hair, concentrating on lengths and ends. Detangle gently and leave on for the time stated on the final label. Rinse thoroughly.',
-      sizeDetail: '250 g', texture: 'Rich conditioning cream', scent: 'To be confirmed',
+      sizeDetail: '250 ml', texture: 'Rich conditioning cream', scent: 'As labelled',
       highlights: ['Richer texture for a treatment step', 'Designed to support slip and manageability', 'Useful alongside a gentle detangling technique'],
-      caution: 'For external use only. Confirm the final formula, timing and directions before launch.'
+      caution: 'For external use only. Avoid contact with eyes and rinse thoroughly.'
     },
     {
       slug: 'ayur-rinse-out-conditioner', name: 'Ayur Rinse-Out Conditioner', category: 'hair', price: 60, size: '250 ml', badge: '',
       short: 'A daily conditioning step for softer-feeling strands and easier detangling.',
-      description: 'A rinse-out conditioner for the step after cleansing. Its sample product profile emphasises slip and everyday manageability to help make detangling feel easier when used with patience and the right technique.',
-      ingredients: 'Draft example: Aqua, Cetearyl Alcohol, Behentrimonium Methosulfate, Cetyl Alcohol, Butyrospermum Parkii (Shea) Butter, Glycerin, Panthenol, Citric Acid and Sodium Benzoate.',
+      description: 'A creamy rinse-out conditioner for the step after cleansing, helping hair feel softer and easier to detangle.',
+      ingredients: '',
       directions: 'After shampooing, smooth through damp hair, focusing on the lengths and ends. Gently work through tangles with fingers or a wide-tooth comb, then rinse thoroughly.',
-      sizeDetail: '250 ml', texture: 'Creamy rinse-out conditioner', scent: 'To be confirmed',
+      sizeDetail: '250 ml', texture: 'Creamy rinse-out conditioner', scent: 'As labelled',
       highlights: ['A simple follow-up to shampoo', 'Designed to support detangling and softness', 'Rinses out after use'],
       caution: 'Avoid contact with eyes. Do not leave in unless the final label specifically instructs you to do so.'
     },
     {
-      slug: 'ayur-leave-in-conditioner', name: 'Ayur Leave-In Conditioner', category: 'hair', price: 55, size: '200 ml', badge: '',
+      slug: 'ayur-leave-in-conditioner', name: 'Ayur Leave-In Conditioner', category: 'hair', price: 55, size: '250 ml', badge: '',
       short: 'Lightweight leave-in conditioning for smoother-feeling hair between wash days.',
-      description: 'A leave-in conditioning step intended to make hair easier to handle during styling. The draft concept combines humectant and conditioning ingredients for a smooth feel without promising repair or a guaranteed result.',
-      ingredients: 'Draft example: Aqua, Aloe Barbadensis Leaf Juice, Glycerin, Cetearyl Alcohol, Behentrimonium Methosulfate, Butyrospermum Parkii (Shea) Butter, Panthenol, Argania Spinosa Kernel Oil and Preservative.',
+      description: 'A leave-in conditioner for the styling step after washing. Apply a small amount through clean, damp lengths and ends, then style as usual.',
+      ingredients: '',
       directions: 'Apply a small amount to clean damp hair. Spread evenly through lengths and ends, adding only what is needed for your texture. Do not rinse out. Keep away from the scalp if the final formula is designed for lengths only.',
-      sizeDetail: '200 ml', texture: 'Light conditioning cream', scent: 'To be confirmed',
+      sizeDetail: '250 ml', texture: 'Light conditioning cream', scent: 'As labelled',
       highlights: ['Leave-in step for styling and upkeep', 'Use a small amount and distribute evenly', 'Can sit alongside rinse-out conditioning'],
-      caution: 'Not interchangeable with a rinse-out conditioner. Confirm the final directions and ingredient list before launch.'
+      caution: 'Not interchangeable with a rinse-out conditioner. Do not rinse out unless the product label instructs you to.'
     },
     {
-      slug: 'ayur-silk-protein-mask', name: 'Ayur Silk Protein Mask', category: 'hair', price: 70, size: '200 g', badge: '',
-      short: 'A focused conditioning mask with a protein-inspired formula concept.',
-      description: 'A treatment mask positioned for a more intensive conditioning step. The sample concept uses hydrolyzed silk protein alongside emollient ingredients to support a smoother feel and manageable styling. Final performance depends on the actual formula.',
-      ingredients: 'Draft example: Aqua, Cetearyl Alcohol, Behentrimonium Methosulfate, Hydrolyzed Silk, Glycerin, Butyrospermum Parkii (Shea) Butter, Persea Gratissima (Avocado) Oil, Panthenol, Preservative and Citric Acid.',
-      directions: 'Apply after cleansing to damp hair, distributing from mid-lengths through ends. Leave on for the time printed on the verified label, then rinse thoroughly. Follow the owner-approved frequency guidance.',
-      sizeDetail: '200 g', texture: 'Dense conditioning mask', scent: 'To be confirmed',
-      highlights: ['A treatment step for wash day', 'Protein-inspired conditioning concept', 'Pairs with a gentle detangling routine'],
-      caution: 'Confirm the final formula and use frequency before launch. Stop use if irritation occurs.'
+      slug: 'ayur-silk-protein-mask', name: 'Prodiva Protein Mask', category: 'hair', price: 70, size: '250 ml', badge: '',
+      short: 'A 250 ml protein mask for an intensive conditioning step on wash day.',
+      description: 'A protein mask for a more intensive conditioning step in your wash-day routine. Follow the directions on the product label and rinse thoroughly.',
+      ingredients: '',
+      directions: 'Apply after cleansing to damp hair, distributing from mid-lengths through ends. Leave on for the time printed on the verified label, then rinse thoroughly. Follow the directions on the product label.',
+      sizeDetail: '250 ml', texture: 'Conditioning mask', scent: 'As labelled',
+      highlights: ['Protein-mask treatment for wash day', 'A conditioning step for hair lengths', 'Follow the directions on the packaging'],
+      caution: 'Stop use if irritation occurs.'
     },
     {
       slug: 'ayur-hair-growth-oil', name: 'Ayur Hair Growth Oil', category: 'hair', price: 75, size: '100 ml', badge: '',
-      short: 'A botanical oil blend for scalp massage and moisture-focused styling.',
-      description: 'A lightweight-to-medium botanical oil concept for scalp massage or for smoothing the hair as part of a routine. The name follows the client’s supplied catalogue. This product description does not promise that the oil will cause hair growth.',
-      ingredients: 'Draft example: Ricinus Communis (Castor) Seed Oil, Simmondsia Chinensis (Jojoba) Seed Oil, Helianthus Annuus (Sunflower) Seed Oil, Argania Spinosa Kernel Oil, Rosmarinus Officinalis (Rosemary) Leaf Extract and Tocopherol.',
+      short: 'Herbal-infused hair growth oil for scalp massage and finishing your routine.',
+      description: 'Herbal-infused hair growth oil in a 100 ml bottle, made for scalp massage and finishing your hair-care routine. Apply a small amount and adjust to your hair’s needs.',
+      ingredients: '',
       directions: 'Dispense a small amount into the palms or fingertips and apply where needed. Massage the scalp gently if that is part of your routine, or smooth a small amount over lengths and ends. Adjust quantity to avoid a heavy finish.',
-      sizeDetail: 'Available in 100 ml and 50 ml sizes', texture: 'Oil blend', scent: 'To be confirmed',
-      variants: [{ id: '100ml', label: '100 ml', price: 75 }, { id: '50ml', label: '50 ml', price: 40 }],
-      highlights: ['Botanical oil blend concept', 'Can be used sparingly on scalp or lengths', 'Offered in two draft size options'],
-      caution: 'Ingredient examples are not verified. Confirm the formula and patch-test guidance before publishing. Avoid unsupported hair-growth claims.'
+      sizeDetail: '100 ml', texture: 'Oil blend', scent: 'As labelled',
+
+      highlights: ['Botanical oil blend', 'Use sparingly on the scalp or hair lengths', 'Available in a 100 ml bottle'],
+      caution: 'For external use only. Avoid contact with eyes and discontinue use if irritation occurs.'
     },
     {
-      slug: 'ayur-hair-growth-butter', name: 'Ayur Hair Growth Butter', category: 'hair', price: 50, size: '200 g', badge: '',
-      short: 'A richer butter for moisture-focused styling and finishing.',
-      description: 'A rich hair butter concept for adding a soft, coated feel to lengths and ends. It is positioned as a styling moisturiser that can be used sparingly where hair feels dry or needs a richer finish.',
-      ingredients: 'Draft example: Butyrospermum Parkii (Shea) Butter, Theobroma Cacao (Cocoa) Seed Butter, Cocos Nucifera (Coconut) Oil, Ricinus Communis (Castor) Seed Oil, Helianthus Annuus (Sunflower) Seed Oil and Tocopherol.',
+      slug: 'ayur-hair-growth-butter', name: 'Ayur Hair Growth Butter', category: 'hair', price: 50, size: '250 ml', badge: '',
+      short: 'A rich 250 ml hair butter for moisture-focused styling and finishing.',
+      description: 'A rich hair butter in a 250 ml jar, made for moisture-focused styling. Warm a little between your palms and smooth through lengths and ends as needed.',
+      ingredients: '',
       directions: 'Warm a small amount between the palms and smooth through dry or slightly damp lengths and ends. Start with less product and add only as needed. Adapt use to your hair texture and the final label instructions.',
-      sizeDetail: 'Available in 200 g and 100 g sizes', texture: 'Rich butter', scent: 'To be confirmed',
-      variants: [{ id: '200g', label: '200 g', price: 50 }, { id: '100g', label: '100 g', price: 25 }],
-      highlights: ['Rich emollient texture', 'Designed for use on lengths and ends', 'Two draft size options'],
-      caution: 'Ingredient examples are placeholders. Confirm formula, storage guidance and directions before publishing.'
+      sizeDetail: '250 ml', texture: 'Rich butter', scent: 'As labelled',
+
+      highlights: ['Rich emollient texture', 'Designed for use on lengths and ends', 'Available in a 250 ml jar'],
+      caution: 'Store in a cool, dry place and stop use if irritation occurs.'
     },
     {
-      slug: 'ayur-hair-tea', name: 'Ayur Hair Tea', category: 'hair', price: 50, size: '100 g', badge: '',
+      slug: 'ayur-hair-tea', name: 'Ayur Hair Tea', category: 'hair', price: 50, size: '200 g', badge: '',
       short: 'A botanical blend designed for a hair-care rinse or infusion routine.',
-      description: 'A plant-inspired hair tea concept for customers who enjoy an herbal infusion as part of wash day. The exact format, preparation method and whether the product is intended for rinse-off use must be confirmed from the final product label.',
-      ingredients: 'Draft example: Hibiscus Sabdariffa Flower, Rosmarinus Officinalis (Rosemary) Leaf, Urtica Dioica (Nettle) Leaf, Mentha Piperita (Peppermint) Leaf and Cymbopogon Citratus (Lemongrass).',
-      directions: 'Prepare and use only according to the verified product directions. If intended as a hair rinse, allow any infusion to cool fully before use and rinse as instructed. Do not assume this cosmetic product is for drinking.',
-      sizeDetail: '100 g botanical blend', texture: 'Dried botanical blend, subject to confirmation', scent: 'Herbal, subject to confirmation',
-      highlights: ['Botanical blend concept', 'Designed to complement a wash-day routine', 'Preparation instructions must be confirmed'],
-      caution: 'Confirm the exact ingredients and intended use before launch. Do not consume unless it is clearly labelled and approved as a food product.'
+      description: 'A herbal hair tea for use as part of your hair-care routine. Prepare and apply only as directed on the product label; this product is not presented as a drink.',
+      ingredients: '',
+      directions: 'Prepare the herbal blend in water as directed on the packaging. Allow the infusion to cool completely, strain it, and apply to the hair and scalp as instructed. This is a hair-care product; do not drink it.',
+      sizeDetail: '200 g botanical blend', texture: 'Botanical blend', scent: 'Herbal',
+      highlights: ['Botanical blend', 'Complements a wash-day routine', 'Follow the package preparation instructions'],
+      caution: 'Use only as directed on the product label. Do not consume unless the package explicitly identifies it as a food product.'
     },
     {
-      slug: 'ayur-scalp-detox-mist', name: 'Ayur Scalp Detox Mist', category: 'hair', price: 25, size: '100 ml', badge: '',
-      short: 'A refreshing mist concept for a light touch between wash days.',
-      description: 'A lightweight scalp-mist concept intended to refresh the feel of the scalp between wash days. The draft copy keeps the focus on feel and routine support rather than promising detoxification or treatment of a scalp condition.',
-      ingredients: 'Draft example: Aqua, Aloe Barbadensis Leaf Juice, Glycerin, Camellia Sinensis (Green Tea) Leaf Extract, Panthenol, Mentha Piperita Leaf Water, Preservative and Citric Acid.',
-      directions: 'Shake if directed on the final label. Spray sparingly onto the intended areas from a comfortable distance and follow with a gentle fingertip massage only if suitable. Avoid contact with eyes and stop if irritation occurs.',
-      sizeDetail: '100 ml', texture: 'Fine mist', scent: 'To be confirmed',
+      slug: 'ayur-scalp-detox-mist', name: 'Rosemary Water Spray', category: 'hair', price: 25, size: '100 ml', badge: '',
+      short: 'A 100 ml rosemary water spray for a light, refreshing step in your hair-care routine.',
+      description: 'A fine rosemary water spray for use on hair and as part of a refreshing care routine. Apply sparingly and keep away from the eyes.',
+      ingredients: '',
+      directions: 'Spray a light amount onto the intended areas from a comfortable distance. Avoid contact with eyes and stop use if irritation occurs.',
+      sizeDetail: '100 ml', texture: 'Fine mist', scent: 'As labelled',
       highlights: ['Fine-mist format', 'Designed for between-wash use', 'Can be placed in a simple daily care routine'],
-      caution: 'Confirm final ingredients, preservative system, application guidance and exact product name before launch.'
+      caution: 'Avoid contact with eyes and discontinue use if irritation occurs.'
     },
     {
       slug: 'ayur-beard-serum', name: 'Ayur Beard Serum', category: 'mens', price: 60, size: '30 ml', badge: '',
       short: 'A conditioning oil blend for a softer-feeling beard and neat finish.',
-      description: 'A beard-care serum concept designed to help facial hair feel conditioned and easier to groom. The light oil blend is intended for a small amount applied to the beard, with the final scent and finish confirmed by the owner.',
-      ingredients: 'Draft example: Simmondsia Chinensis (Jojoba) Seed Oil, Vitis Vinifera (Grape) Seed Oil, Argania Spinosa Kernel Oil, Ricinus Communis (Castor) Seed Oil and Tocopherol.',
+      description: 'A lightweight beard serum that helps soften the feel of facial hair and makes everyday grooming simple.',
+      ingredients: '',
       directions: 'Apply two or three drops to the palm, rub hands together then work through a clean, dry or slightly damp beard. Use less for shorter beards. Keep away from eyes and broken skin.',
-      sizeDetail: '30 ml', texture: 'Light oil serum', scent: 'To be confirmed',
+      sizeDetail: '30 ml', texture: 'Light oil serum', scent: 'As labelled',
       highlights: ['Made for beard grooming', 'Apply a small amount and distribute evenly', 'A lightweight oil format'],
-      caution: 'Confirm the formula and fragrance details. Patch-test before first use and avoid contact with eyes.'
+      caution: 'Patch-test before first use and avoid contact with eyes.'
     },
     {
       slug: 'derma-roller', name: 'Derma Roller', category: 'tools', price: 70, size: '1 tool', badge: '',
-      short: 'A personal grooming tool with specifications to be verified before sale.',
-      description: 'A personal-care tool listed in the supplied catalogue. The needle length, materials, intended use and care instructions are placeholders until the exact model is confirmed. Avoid making claims about hair growth or clinical results.',
-      ingredients: 'Not applicable. Confirm the exact materials and needle specifications from the manufacturer.',
+      short: 'A personal grooming tool for a considered at-home routine.',
+      description: 'A personal-care derma roller. Follow the manufacturer’s hygiene and use instructions carefully, and do not use on irritated or broken skin.',
+      ingredients: '',
       directions: 'Follow the manufacturer’s verified instructions only. Do not share the tool. Do not use on irritated, infected or broken skin. Confirm cleaning, storage and replacement guidance before use.',
-      sizeDetail: '1 tool. Exact dimensions and needle specifications to be confirmed.', texture: 'Personal-care tool', scent: 'Not applicable',
-      highlights: ['Personal-use grooming accessory', 'Exact model specifications need verification', 'Care and hygiene information should accompany the product'],
-      caution: 'The exact device specification and safe-use instructions must be confirmed before launch. Do not present the product as a treatment or recommend use on a scalp condition.'
+      sizeDetail: '1 tool', texture: 'Personal-care tool', scent: 'Not applicable',
+      highlights: ['Personal-use grooming accessory', 'Use according to the manufacturer’s instructions', 'Use according to the manufacturer’s hygiene guidance'],
+      caution: 'Use only as directed by the manufacturer. Do not use on irritated, infected or broken skin.'
     },
     {
       slug: 'satin-bonnet', name: 'Satin Bonnet', category: 'tools', price: 40, size: 'One size', badge: '',
       short: 'A satin-style hair covering for bedtime and protective styling.',
-      description: 'A satin bonnet for covering and holding hair in place during rest or selected styling routines. The smooth lining and elastic edge shown here are placeholders, so verify the fabric, fit and washing instructions for the exact product supplied.',
-      ingredients: 'Not applicable. Confirm the fabric composition and trim materials from the supplier.',
+      description: 'A satin bonnet designed to help keep hair covered and in place while you rest or style. Choose your preferred colour and follow the care guidance for the fabric.',
+      ingredients: '',
       directions: 'Gather hair comfortably and position the bonnet without pulling the hairline. Adjust the band for a secure but comfortable fit. Follow the verified care instructions for washing and drying.',
-      sizeDetail: 'One size, subject to fit confirmation', texture: 'Satin-style fabric, composition to be confirmed', scent: 'Not applicable',
+      sizeDetail: 'One size', texture: 'Satin-style fabric', scent: 'Not applicable',
       colorOptions: true,
       highlights: ['For bedtime and selected protective styles', 'Available in black, red, purple and pink', 'Red is the initial storefront colour'],
-      caution: 'Confirm fibre content, band construction and care instructions before launch.'
+      caution: 'Follow the fabric care guidance supplied with the product.'
     },
     {
       slug: 'steaming-cap', name: 'Steaming Cap for Deep Conditioning', category: 'tools', price: 50, size: 'One size', badge: '',
       short: 'A cap accessory for a deep-conditioning step at home.',
-      description: 'A steaming-cap accessory intended to accompany a deep-conditioning step. The exact cap type, heating method, electrical details and use instructions need to be confirmed for the supplied model before the product is published.',
-      ingredients: 'Not applicable. Confirm fabric, inner lining and any electrical components from the supplier.',
+      description: 'A reusable steaming-cap accessory to pair with a deep-conditioning routine. Use only according to the instructions supplied with the cap.',
+      ingredients: '',
       directions: 'Use only in line with the instructions provided with the exact product. Do not use if the product or its wiring appears damaged. Do not leave a powered device unattended and allow it to cool fully before storage if the model generates heat.',
-      sizeDetail: 'One size, subject to fit confirmation', texture: 'Cap accessory, construction to be confirmed', scent: 'Not applicable',
+      sizeDetail: 'One size', texture: 'Cap accessory', scent: 'Not applicable',
       colorOptions: true,
       highlights: ['Accessory for a conditioning step', 'Available in pink and red', 'Pink is the initial storefront colour'],
-      caution: 'Confirm product construction, electrical specifications and manufacturer safety information before sale.'
+      caution: 'Follow the manufacturer’s safety instructions. Do not use if the cap or its wiring appears damaged.'
     },
     {
       slug: 'spray-bottle', name: 'Spray Bottle', category: 'tools', price: 30, size: '300 ml', badge: '',
       short: 'A refillable spray bottle for controlled water or product application.',
-      description: 'A refillable spray bottle for routine prep, misting or product dilution where the product label allows it. The listed capacity is a working placeholder and must be checked against the item in stock.',
-      ingredients: 'Not applicable. Confirm bottle material, nozzle material and maximum fill capacity from the supplier.',
+      description: 'A refillable spray bottle for applying water or suitable hair-care liquids during styling and wash-day preparation.',
+      ingredients: '',
       directions: 'Fill only with liquids suitable for the bottle and nozzle. Label contents clearly and rinse the bottle as needed. Do not mix products unless their instructions confirm they are compatible.',
-      sizeDetail: '300 ml placeholder capacity', texture: 'Refillable accessory', scent: 'Not applicable',
-      highlights: ['Refillable format', 'Useful for controlled misting', 'Capacity and material need confirmation'],
-      caution: 'Confirm the actual capacity and material before publishing. Keep filled bottles labelled and away from young children.'
+      sizeDetail: '300 ml', texture: 'Refillable accessory', scent: 'Not applicable',
+      highlights: ['Refillable format', 'Useful for controlled misting', 'Refillable design for everyday styling'],
+      caution: 'Keep contents labelled and store filled bottles away from young children.'
     }
   ];
 
@@ -347,7 +347,7 @@
     const sizeText = cardSize(product);
     return `<article class="product-card" data-product-card data-product-slug="${escapeHtml(product.slug)}">
       <a class="product-card-media" href="${productHref(product.slug)}" aria-label="View ${escapeHtml(product.name)}">
-        <img src="${escapeHtml(cardImage)}" data-card-image alt="${escapeHtml(product.name)} image placeholder" loading="lazy">
+        <img src="${escapeHtml(cardImage)}" data-card-image alt="${escapeHtml(product.name)}" loading="lazy">
         <span class="product-card-open" aria-hidden="true"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>
       </a>
       <div class="product-card-copy">
@@ -389,7 +389,7 @@
 
     function renderCategoryFilters() {
       if (!filterHost) return;
-      filterHost.innerHTML = `<button type="button" class="filter-chip" data-category="all">All products <span data-category-count="all">${PRODUCTS.length}</span></button>${Object.entries(CATEGORY_LABELS).map(([slug, label]) => `<button type="button" class="filter-chip" data-category="${escapeHtml(slug)}">${escapeHtml(label)}</button>`).join('')}`;
+      filterHost.innerHTML = `<button type="button" class="filter-chip" data-category="all">All products</button>${Object.entries(CATEGORY_LABELS).map(([slug, label]) => `<button type="button" class="filter-chip" data-category="${escapeHtml(slug)}">${escapeHtml(label)}</button>`).join('')}`;
     }
 
     function updateActiveFilter() {
@@ -411,11 +411,11 @@
       if (sortMode === 'name') items.sort((a, b) => a.name.localeCompare(b.name));
       if (sortMode === 'featured') items.sort((a, b) => PRODUCTS.indexOf(a) - PRODUCTS.indexOf(b));
       renderGrid(grid, items);
-      if (resultsCount) resultsCount.textContent = String(items.length);
+      if (resultsCount) resultsCount.textContent = ''; 
       if (empty) empty.hidden = items.length > 0;
       grid.hidden = items.length === 0;
       updateActiveFilter();
-      document.querySelectorAll('[data-category-count="all"]').forEach(node => { node.textContent = String(PRODUCTS.length); });
+      document.querySelectorAll('[data-category-count="all"]').forEach(node => node.remove());
     }
 
     const params = new URLSearchParams(window.location.search);
@@ -525,7 +525,7 @@
       const label = entry.label || item.name;
       const size = item.variants ? item.variants.map(variant => variant.label).join(' / ') : item.size;
       return `<button type="button" class="set-item-card" data-open-product="${escapeHtml(item.slug)}" aria-label="View details for ${escapeHtml(label)}">
-        <span class="set-item-image"><img src="${escapeHtml(imageFor(item.slug, defaultColorFor(item.slug)))}" alt="${escapeHtml(label)} image placeholder" loading="lazy"></span>
+        <span class="set-item-image"><img src="${escapeHtml(imageFor(item.slug, defaultColorFor(item.slug)))}" alt="${escapeHtml(label)}" loading="lazy"></span>
         <span class="set-item-copy"><span class="set-item-number">ITEM ${index + 1}</span><strong>${escapeHtml(label)}</strong><small>${escapeHtml(size || categoryLabel(item))} · ${escapeHtml(cardPrice(item))}</small></span>
         <span class="set-item-arrow"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></span>
       </button>`;
@@ -557,12 +557,12 @@
     setText('[data-product-breadcrumb]', currentProduct.name);
     setText('[data-product-category]', '');
     const ingredientSection = document.querySelector('[data-ingredients-section]');
-    if (ingredientSection) ingredientSection.hidden = currentProduct.category === 'sets';
+    if (ingredientSection) ingredientSection.hidden = !String(currentProduct.ingredients || '').trim();
     setText('[data-product-title]', currentProduct.name);
     setText('[data-product-short]', currentProduct.short);
     setText('[data-product-description]', currentProduct.description);
     setText('[data-long-description]', currentProduct.description);
-    setText('[data-product-ingredients]', currentProduct.ingredients);
+    setText('[data-product-ingredients]', currentProduct.ingredients || '');
     setText('[data-product-directions]', currentProduct.directions);
     setText('[data-product-caution]', currentProduct.caution);
     setText('[data-product-qty]', '1');
@@ -639,12 +639,12 @@
     const color = selection.color || defaultColorFor(product.slug);
     const price = sizeVariant ? sizeVariant.price : product.price;
     const selectedName = color && IMAGES.variants && IMAGES.variants[product.slug] && IMAGES.variants[product.slug].colors[color] ? IMAGES.variants[product.slug].colors[color].label : '';
-    return `<div class="drawer-product-image"><img src="${escapeHtml(imageFor(product.slug, color))}" alt="${escapeHtml(product.name)} image placeholder"></div>
+    return `<div class="drawer-product-image"><img src="${escapeHtml(imageFor(product.slug, color))}" alt="${escapeHtml(product.name)}"></div>
       <div class="drawer-product-copy"><p class="eyebrow"><span></span>${escapeHtml(categoryLabel(product).toUpperCase())}</p><h2 id="drawerTitle">${escapeHtml(product.name)}</h2><div class="drawer-product-price" data-drawer-price>${currency(price)}</div><p>${escapeHtml(product.description)}</p>
       <div class="drawer-facts"><div class="drawer-fact"><span>Size / quantity</span><strong>${escapeHtml(sizeVariant ? sizeVariant.label : product.size || 'See product details')}</strong></div><div class="drawer-fact"><span>${product.colorOptions ? 'Selected colour' : 'Product type'}</span><strong data-drawer-color-label>${escapeHtml(selectedName || (product.texture || 'Hair care'))}</strong></div></div>
       <div class="drawer-info-block"><h3>What it is</h3><p>${escapeHtml(product.short)} ${escapeHtml(product.sizeDetail || '')}</p></div>
       <div class="drawer-info-block"><h3>Key details</h3><ul>${(product.highlights || []).map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>
-      <div class="drawer-info-block"><h3>Ingredients or materials</h3><p>${escapeHtml(product.ingredients)}</p></div>
+      ${String(product.ingredients || '').trim() ? `<div class="drawer-info-block"><h3>Ingredients</h3><p>${escapeHtml(product.ingredients)}</p></div>` : ''}
       <div class="drawer-info-block"><h3>How to use</h3><p>${escapeHtml(product.directions)}</p></div>
       <div class="drawer-info-block"><h3>Important notes</h3><p>${escapeHtml(product.caution || 'Confirm all product specifications with the owner before publishing.')}</p></div>
       <div class="drawer-options" data-drawer-options>${renderOptions(product, 'drawer', selection.sizeId, color)}</div>
@@ -742,14 +742,16 @@
       const image = item.image || imageFor(item.slug, item.color);
       const variantText = [item.colorLabel || (item.color ? item.color : ''), item.size || ''].filter(Boolean).join(' / ');
       return `<article class="cart-item" data-cart-key="${escapeHtml(cartItemKey(item))}">
-        <div class="cart-item-product"><a href="${productHref(item.slug)}" class="cart-item-image"><img src="${escapeHtml(image)}" alt="${escapeHtml(item.name)} image placeholder"></a><div class="cart-item-copy"><span class="cart-item-category">${escapeHtml(categoryLabel(product || item))}</span><a class="cart-item-title" href="${productHref(item.slug)}">${escapeHtml(item.name)}</a><p class="cart-item-variant">${escapeHtml(variantText || 'Standard option')}</p><span class="cart-item-price">${currency(item.price)} each</span><button type="button" class="cart-remove" data-cart-remove="${escapeHtml(cartItemKey(item))}">Remove</button></div></div>
+        <div class="cart-item-product"><a href="${productHref(item.slug)}" class="cart-item-image"><img src="${escapeHtml(image)}" alt="${escapeHtml(item.name)}"></a><div class="cart-item-copy"><span class="cart-item-category">${escapeHtml(categoryLabel(product || item))}</span><a class="cart-item-title" href="${productHref(item.slug)}">${escapeHtml(item.name)}</a><p class="cart-item-variant">${escapeHtml(variantText || 'Standard option')}</p><span class="cart-item-price">${currency(item.price)} each</span><button type="button" class="cart-remove" data-cart-remove="${escapeHtml(cartItemKey(item))}">Remove</button></div></div>
         <div class="cart-qty" aria-label="Quantity for ${escapeHtml(item.name)}"><button type="button" data-cart-minus="${escapeHtml(cartItemKey(item))}" aria-label="Decrease quantity">−</button><output>${Number(item.qty)}</output><button type="button" data-cart-plus="${escapeHtml(cartItemKey(item))}" aria-label="Increase quantity">+</button></div>
         <div class="cart-item-total">${currency(Number(item.price) * Number(item.qty))}</div>
       </article>`;
     }).join('');
     const subtotal = cartSubtotal(cart);
+    const processingFee = Math.round(subtotal * 0.0295 * 100) / 100;
     setText('[data-cart-subtotal]', currency(subtotal));
-    setText('[data-cart-total]', currency(subtotal));
+    setText('[data-cart-fee]', currency(processingFee));
+    setText('[data-cart-total]', currency(subtotal + processingFee));
     document.querySelectorAll('[data-checkout-link]').forEach(link => { link.setAttribute('aria-disabled', String(cart.length === 0)); if (!cart.length) link.classList.add('is-disabled'); else link.classList.remove('is-disabled'); });
     container.querySelectorAll('[data-cart-minus]').forEach(button => button.addEventListener('click', () => updateCartQuantity(button.dataset.cartMinus, -1)));
     container.querySelectorAll('[data-cart-plus]').forEach(button => button.addEventListener('click', () => updateCartQuantity(button.dataset.cartPlus, 1)));
@@ -922,6 +924,13 @@
       const merged = payload.products.filter(item => item && item.slug && item.active !== false).map(remote => {
         const base = localBySlug.get(remote.slug) || {};
         const normalized = { ...base, ...remote };
+        if (normalized.slug === 'ayur-hair-growth-oil') { delete normalized.variants; normalized.size = '100 ml'; normalized.sizeDetail = '100 ml'; }
+        if (normalized.slug === 'ayur-hair-growth-butter') { delete normalized.variants; normalized.size = '250 ml'; normalized.sizeDetail = '250 ml'; }
+        if (normalized.slug === 'ayur-silk-protein-mask') { delete normalized.variants; normalized.name = 'Prodiva Protein Mask'; normalized.size = '250 ml'; normalized.sizeDetail = '250 ml'; }
+        if (normalized.slug === 'ayur-deep-conditioner') { normalized.size = '250 ml'; normalized.sizeDetail = '250 ml'; }
+        if (normalized.slug === 'ayur-leave-in-conditioner') { normalized.size = '250 ml'; normalized.sizeDetail = '250 ml'; }
+        if (normalized.slug === 'ayur-hair-tea') { normalized.size = '200 g'; normalized.sizeDetail = '200 g botanical blend'; }
+        if (normalized.slug === 'ayur-scalp-detox-mist') normalized.name = 'Rosemary Water Spray';
         if (remote.useRepositoryImages) {
           if (base.slug && IMAGES.products && IMAGES.products[base.slug]) IMAGES.products[remote.slug] = IMAGES.products[base.slug];
         } else if (Array.isArray(remote.images) && remote.images.length) {

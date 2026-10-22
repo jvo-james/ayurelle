@@ -81,34 +81,32 @@ Set these Netlify environment variables:
 
 Verify the sending domain in Resend before production use. The email template library contains responsive HTML and plain-text content for order receipts, admin order notifications, contact-form acknowledgements, admin contact alerts, newsletter welcome messages, subscriber alerts and order status changes. `ADMIN_NOTIFICATION_EMAIL` is used as the primary store inbox. Contact and newsletter forms use Netlify Functions and display a loading state that ends on success or failure.
 
-## Public image placeholders and previews
+## Storefront imagery and product details
 
-Edit image URLs in `images.js`. Set `logoMark` to the client's final logo URL or repo path. That value drives the rounded site logo, browser favicon, touch icon and the page's Open Graph/Twitter image meta tags when the browser loads JavaScript. Crawlers used by some social apps do not execute JavaScript, so after deployment, update the static `og:image` and `twitter:image` values in the HTML heads to an absolute HTTPS URL pointing to the final logo or approved share image. Keep the logo image at a stable URL to avoid stale browser and social preview caches.
+Product photography and gallery mappings are managed in the repository assets and `images.js`. That file controls the brand mark, homepage hero, product photography, product galleries and colour variants. Social platforms do not always execute JavaScript, so after the production domain is selected, set the static `og:image` and `twitter:image` metadata in each HTML head to an absolute HTTPS share-image URL.
 
-The repository currently includes placeholder artwork plus Unsplash concept imagery. Replace those visuals with the approved product photographs before launch. The steaming-cap item images and hair growth oil/butter gallery mappings are already in `images.js`.
+The catalogue copy, prices, pack sizes, directions, cautions and set contents are maintained in `script.js` and can be edited through Store Studio. Ingredient fields are intentionally blank until the owner enters the approved ingredient text; the product page hides the complete Ingredients section while that field is empty. The Ayur Hair Growth Oil is sold in one 100 ml size, the Hair Growth Butter and Prodiva Protein Mask are shown as 250 ml items, both conditioners have corrected 250 ml sizes, and Ayur Hair Tea is shown as 200 g based on the package images reviewed for this update.
 
-## Product details and inventory
+Before advertising a cosmetic benefit or publishing ingredient claims, use the exact current product label as the source of truth. Keep price, quantity, directions and caution information aligned with the physical packaging.
 
-The starter catalogue includes three care sets, the individual hair-care products, a beard serum and accessories. Hair growth oil and hair growth butter have separate size-priced variants. The satin bonnet starts on red, with black, purple and pink options; the steaming cap starts on pink, with red as the alternative. Its colour mapping has both storefront and item-view images.
+## Inventory and fulfilment
 
-Descriptions, sizes, ingredients, materials, directions and cautions are draft copy intended to be reviewed by the owner. Do not present sample ingredients or cosmetic claims as verified formulas. Confirm exact product labels, weights, formulations, usage instructions, warnings, pricing, inventory and delivery information before the live launch.
+Store Studio supports product visibility, stock tracking and low-stock alerts. When tracking is enabled, the backend checks available stock during checkout and reduces tracked stock after a payment is verified. If stock changes unexpectedly before payment verification, the order records an inventory adjustment issue for review.
 
-When inventory tracking is enabled for a product, the backend checks stock during checkout and reduces tracked stock once a payment is verified. If a payment arrives when stock has changed unexpectedly, Store Studio records an inventory adjustment issue for review instead of claiming that the payment failed.
+Checkout supports home delivery and pickup. The next available date is calculated using the configured delivery or pickup weekdays; the default schedule is Wednesday and Saturday. Store Studio can edit the weekdays, pickup address, pickup instructions, delivery note and order-preparation note. The pickup address defaults to **Ville Afrique, North Kaneshie**. Customers see their chosen fulfilment method, scheduled date and relevant instructions in the confirmation page and receipt/email.
 
 ## Admin capabilities
 
-Store Studio provides Firebase email/password login, product create/edit/delete, the advanced product document editor, image galleries and upload controls, repository image reset, categories, stock tracking and low-stock alerts, orders and fulfilment status management, paid-sales analytics, CSV export, contact enquiries, newsletter subscribers and store preferences. It is responsive and uses realtime Firestore listeners for admin views.
+Store Studio provides email/password login, friendly product editing, image galleries and upload controls, curated set contents, categories, stock tracking and low-stock alerts, order detail drawers and fulfilment status updates, paid-sales analytics, CSV export, contact enquiries, newsletter subscribers, editable fulfilment settings and sign-in detail changes. It uses realtime database listeners for admin views and restores an existing sign-in session after page reload.
 
-## Before going live
+## Production checklist
 
-1. Replace placeholder logo and product imagery; confirm the image file paths exist.
-2. Confirm product names, prices, sizes, variants, exact ingredients and usage instructions with the owner.
-3. Add real inventory counts and enable tracking where needed.
-4. Configure Firebase, Firestore rules, the first admin UID and Firebase Admin service credentials.
-5. Configure Cloudinary and test single image, multi-image, drag-and-drop and clipboard image uploads.
-6. Verify the Resend sender domain and test emails to both customer and admin inboxes.
-7. Configure Paystack test keys and the webhook URL, test payment success/cancel/failure paths and inspect stored orders. Only then switch to live keys.
-8. Set a production `SITE_URL`, confirm delivery and returns policies, then test on real phones and desktop browsers.
-9. Update the static social preview image URLs after the final domain is chosen. Social platforms can cache old previews, so refresh those caches when required.
+1. Configure Firebase Authentication with Email/Password, create Firestore and publish `firestore.rules`.
+2. Create the authorised admin record at `admins/{AUTH_USER_UID}` with `{ "active": true }`, or grant the equivalent trusted `admin: true` claim.
+3. Add `FIREBASE_PROJECT_ID` and `FIREBASE_SERVICE_ACCOUNT_JSON` as private Netlify environment variables. Put only public Web App configuration in `firebase-config.js`.
+4. Set the required Netlify variables for Paystack, Resend and the canonical `SITE_URL`. Configure a verified Resend sending domain and the Paystack webhook at `https://YOUR-DOMAIN/.netlify/functions/paystack-webhook`.
+5. Configure Cloudinary credentials if the owner will upload custom product images from Store Studio.
+6. Confirm the visible prices and packaging quantities with the current product labels, enter the actual opening stock figures if inventory tracking is enabled, and save the approved ingredients/directions for the products that need them.
+7. Test delivery and pickup on a Wednesday/Thursday/Friday/Saturday transition, successful and failed Paystack test transactions, order confirmation emails, status-change emails, newsletter/contact submissions and the admin experience on a phone and desktop. Switch to live payment credentials only after those checks pass.
 
-**Important:** integration code is included but cannot be live-tested without the client's Firebase project, Cloudinary account, Paystack account, Resend sender domain and deployed Netlify environment. Provider-side setup and a real end-to-end test are required before accepting live payments.
+**Provider setup is required before live transactions and emails can run.** The repository includes the integration code, but Firebase, Paystack, Resend and Cloudinary must be configured with the owner's production accounts and tested on the deployed Netlify site.

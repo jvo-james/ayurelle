@@ -2,7 +2,7 @@
   AYURÉLLE ORGANICS IMAGE LIBRARY
   Change images here. Product page, shop cards, set-content drawers, the round
   header logo and browser icon all read from this file.
-  Replace concept photography with approved Ayurélle product photos before launch.
+  Product and brand images used across the storefront.
 */
 window.AYURELLE_IMAGES = {
   logoMark: 'images/logo.jpeg', // Replace this one value to change the round header logo and browser icon.

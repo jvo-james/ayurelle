@@ -1,6 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, getIdToken } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
-import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp, writeBatch } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, getIdToken, EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, deleteField, onSnapshot, serverTimestamp, writeBatch } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -26,6 +26,7 @@ let draftImages = [];
 let uploadCount = 0;
 const unsubscribers = [];
 let toastTimer;
+let initialSnapshotKeys = new Set();
 
 function setBusy(button, enabled, text = 'Working…') {
   if (!button) return;
@@ -55,6 +56,17 @@ function setMessage(selector, text, error = false) {
   const node = $(selector);
   if (node) { node.textContent = text || ''; node.classList.toggle('is-error', !!error); }
 }
+function setLoading(visible, title = 'Loading your store', detail = 'Loading your latest orders and products.') {
+  const overlay = $('[data-admin-loading]');
+  if (!overlay) return;
+  overlay.hidden = !visible;
+  const heading = overlay.querySelector('strong'); const caption = overlay.querySelector('small');
+  if (heading) heading.textContent = title; if (caption) caption.textContent = detail;
+}
+function markInitialSnapshot(key) {
+  initialSnapshotKeys.add(key);
+  if (['products', 'orders', 'categories'].every(item => initialSnapshotKeys.has(item))) setLoading(false);
+}
 function setShellVisible(visible) {
   $('[data-login-screen]').hidden = visible;
   $('[data-admin-shell]').hidden = !visible;
@@ -62,7 +74,8 @@ function setShellVisible(visible) {
     const email = currentUser?.email || 'Store admin';
     $('[data-admin-user]').textContent = email;
     $('[data-admin-initials]').textContent = email.charAt(0).toUpperCase();
-    $('[data-system-status]').textContent = 'Connected to Firebase';
+    $('[data-system-status]').textContent = 'Changes sync automatically';
+    const accountEmail = $('[data-auth-settings-form] [name=newEmail]'); if (accountEmail) accountEmail.value = email;
     $('[data-today-label]').textContent = new Date().toLocaleDateString('en-GH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   }
 }
@@ -90,25 +103,32 @@ async function startApp() {
     currentUser = user;
     if (!user) {
       closeRealtimeListeners();
+      initialSnapshotKeys = new Set();
+      setLoading(false);
       setShellVisible(false);
       return;
     }
+    setLoading(true, 'Loading your store', 'Loading your latest orders and products.');
+    initialSnapshotKeys = new Set();
     try {
       const authorised = await checkAdmin(user);
       if (!authorised) {
         await signOut(auth);
+        setLoading(false);
         setShellVisible(false);
-        setMessage('[data-login-message]', 'This account does not have store-admin permissions. Create an admins/{uid} document with active: true or assign the admin custom claim.', true);
+        setMessage('[data-login-message]', 'This email does not have access to the store dashboard. Please contact the store owner for help.', true);
         return;
       }
       setShellVisible(true);
       await seedCatalogueIfNeeded();
       subscribeRealtimeData();
-      loadStoreSettings();
+      await loadStoreSettings();
       renderSetupChecklist();
     } catch (error) {
+      console.error('Unable to open the store workspace:', error);
+      setLoading(false);
       setShellVisible(false);
-      setMessage('[data-login-message]', `Could not open the admin workspace: ${error.message}`, true);
+      setMessage('[data-login-message]', friendlyError(error, 'We could not open the store dashboard. Please refresh and try again.'), true);
     }
   });
 }
@@ -119,19 +139,38 @@ async function seedCatalogueIfNeeded() {
   let seededProducts = false;
   if (snapshot.empty) {
     const defaults = window.AYURELLE_CATALOGUE?.list || [];
-    if (!defaults.length) throw new Error('The default catalogue could not be loaded. Refresh the page and try again.');
+    if (!defaults.length) throw new Error('The product catalogue could not be loaded. Please refresh and try again.');
     const batch = writeBatch(db);
     defaults.forEach((product, index) => {
       const imageVariants = window.AYURELLE_IMAGES?.variants?.[product.slug] || null;
       batch.set(doc(db, 'products', product.slug), {
-        ...product,
-        images: [], imageUrl: '', useRepositoryImages: true, imageVariants,
+        ...product, images: [], imageUrl: '', useRepositoryImages: true, imageVariants,
         stock: 0, lowStockThreshold: 5, trackInventory: false, active: true, sortOrder: index + 1,
         createdAt: serverTimestamp(), updatedAt: serverTimestamp()
       });
     });
     await batch.commit();
     seededProducts = true;
+  } else {
+    const defaultsBySlug = new Map((window.AYURELLE_CATALOGUE?.list || []).map(item => [item.slug, item]));
+    const batch = writeBatch(db); let edits = 0;
+    snapshot.docs.forEach(docSnap => {
+      const current = docSnap.data(); const slug = current.slug || docSnap.id; const updates = {};
+      if (slug === 'ayur-hair-growth-oil') { updates.size = '100 ml'; updates.sizeDetail = '100 ml'; updates.variants = deleteField(); }
+      if (slug === 'ayur-hair-growth-butter') { updates.size = '250 ml'; updates.sizeDetail = '250 ml'; updates.variants = deleteField(); }
+      if (slug === 'ayur-silk-protein-mask') { updates.name = 'Prodiva Protein Mask'; updates.size = '250 ml'; updates.sizeDetail = '250 ml'; updates.variants = deleteField(); }
+      if (slug === 'ayur-deep-conditioner') { updates.size = '250 ml'; updates.sizeDetail = '250 ml'; }
+      if (slug === 'ayur-leave-in-conditioner') { updates.size = '250 ml'; updates.sizeDetail = '250 ml'; }
+      if (slug === 'ayur-hair-tea') { updates.size = '200 g'; updates.sizeDetail = '200 g botanical blend'; }
+      if (slug === 'ayur-scalp-detox-mist') updates.name = 'Rosemary Water Spray';
+      const fallback = defaultsBySlug.get(slug);
+      for (const field of ['short', 'description', 'directions', 'sizeDetail', 'scent', 'texture', 'caution']) {
+        if (typeof current[field] === 'string' && /(draft|sample|placeholder|concept|to be confirmed|confirm.*before launch|owner-approved)/i.test(current[field]) && fallback?.[field]) updates[field] = fallback[field];
+      }
+      if (typeof current.ingredients === 'string' && /(draft example|sample formula|placeholder ingredient|to be confirmed)/i.test(current.ingredients)) updates.ingredients = '';
+      if (Object.keys(updates).length) { updates.updatedAt = serverTimestamp(); batch.update(doc(db, 'products', docSnap.id), updates); edits++; }
+    });
+    if (edits) await batch.commit();
   }
   // Seed categories independently. A store may already have products while its
   // category collection is still empty or was cleared by an administrator.
@@ -142,23 +181,22 @@ async function seedCatalogueIfNeeded() {
     fallbackCategories.forEach(([slug, name], index) => categoryBatch.set(doc(db, 'categories', slug), { slug, name, active: true, sortOrder: index + 1, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
     await categoryBatch.commit();
   }
-  if (seededProducts) toast('Your starter catalogue was added to Firebase. Review stock and sample product details before launch.');
+  if (seededProducts) toast('Your product catalogue is ready. Review prices and stock levels before taking orders.');
 }
-
 function subscribeRealtimeData() {
   closeRealtimeListeners();
   unsubscribers.push(onSnapshot(collection(db, 'products'), snap => {
     products = snap.docs.map(d => ({ ...d.data(), id: d.id, slug: d.data().slug || d.id })).sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0) || String(a.name).localeCompare(String(b.name)));
-    renderAll();
-  }, err => toast(`Product sync failed: ${err.message}`, 'error')));
+    renderAll(); markInitialSnapshot('products');
+  }, err => { console.warn('Products did not load:', err.message); markInitialSnapshot('products'); toast('Some product information could not be loaded. Check your connection and refresh.', 'error'); }) );
   unsubscribers.push(onSnapshot(collection(db, 'orders'), snap => {
     orders = snap.docs.map(normaliseOrder).sort((a, b) => (dateFrom(b.createdAt)?.getTime() || 0) - (dateFrom(a.createdAt)?.getTime() || 0));
-    renderAll();
-  }, err => toast(`Order sync failed: ${err.message}`, 'error')));
+    renderAll(); markInitialSnapshot('orders');
+  }, err => { console.warn('Orders did not load:', err.message); markInitialSnapshot('orders'); toast('Orders could not be refreshed. Please check your connection and try again.', 'error'); }) );
   unsubscribers.push(onSnapshot(collection(db, 'categories'), snap => {
     categories = snap.docs.map(d => ({ ...d.data(), id: d.id, slug: d.data().slug || d.id })).sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0) || String(a.name).localeCompare(String(b.name)));
-    renderAll();
-  }, err => toast(`Category sync failed: ${err.message}`, 'error')));
+    renderAll(); markInitialSnapshot('categories');
+  }, err => { console.warn('Categories did not load:', err.message); markInitialSnapshot('categories'); toast('Categories could not be refreshed. Please check your connection and try again.', 'error'); }) );
   unsubscribers.push(onSnapshot(collection(db, 'contact_messages'), snap => {
     messages = snap.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (dateFrom(b.createdAt)?.getTime() || 0) - (dateFrom(a.createdAt)?.getTime() || 0));
     renderMessages(); renderNavCounts();
@@ -262,7 +300,7 @@ function renderProducts() {
   const tbody = $('[data-products-table]');
   if (!tbody) return;
   const results = filteredProducts(false);
-  tbody.innerHTML = results.length ? results.map(p => `<tr><td><div class="admin-table-product"><span class="admin-table-product-image"><img src="${esc(p.useRepositoryImages ? initialImage(p) : p.images?.[0] || p.imageUrl || initialImage(p))}" alt="" loading="lazy"></span><span><strong>${esc(p.name)}</strong><small>${esc(p.slug)}</small></span></div></td><td><span class="admin-category-label">${esc(categoryName(p.category))}</span></td><td><strong>${money(minPrice(p))}</strong>${p.variants?.length ? '<small class="admin-table-sub">From</small>' : ''}</td><td>${inventoryLabel(p)}</td><td><span class="admin-listing-pill ${p.active === false ? 'is-hidden' : 'is-active'}"><i></i>${p.active === false ? 'Hidden' : 'Active'}</span></td><td><button type="button" class="admin-row-action" data-edit-product="${esc(p.slug)}" aria-label="Edit ${esc(p.name)}"><i class="fa-solid fa-arrow-up-right-from-square"></i></button></td></tr>`).join('') : '<tr><td colspan="6"><div class="admin-empty-table">No products match those filters.</div></td></tr>';
+  tbody.innerHTML = results.length ? results.map(p => `<tr class="admin-clickable-row" data-edit-product="${esc(p.slug)}" tabindex="0" aria-label="Edit ${esc(p.name)}"><td><div class="admin-table-product"><span class="admin-table-product-image"><img src="${esc(p.useRepositoryImages ? initialImage(p) : p.images?.[0] || p.imageUrl || initialImage(p))}" alt="" loading="lazy"></span><span><strong>${esc(p.name)}</strong><small>${esc(p.slug)}</small></span></div></td><td><span class="admin-category-label">${esc(categoryName(p.category))}</span></td><td><strong>${money(minPrice(p))}</strong>${p.variants?.length ? '<small class="admin-table-sub">From</small>' : ''}</td><td>${inventoryLabel(p)}</td><td><span class="admin-listing-pill ${p.active === false ? 'is-hidden' : 'is-active'}"><i></i>${p.active === false ? 'Hidden' : 'Active'}</span></td><td><button type="button" class="admin-row-action" data-edit-product="${esc(p.slug)}" aria-label="Edit ${esc(p.name)}"><i class="fa-solid fa-arrow-up-right-from-square"></i></button></td></tr>`).join('') : '<tr><td colspan="6"><div class="admin-empty-table">No products match those filters.</div></td></tr>';
   $('[data-products-count]').textContent = `${results.length} of ${products.length} products`;
 }
 function minPrice(p) { return Array.isArray(p.variants) && p.variants.length ? Math.min(...p.variants.map(v => Number(v.price) || 0)) : Number(p.price || 0); }
@@ -282,7 +320,7 @@ function renderInventory() {
   $('[data-inv-low]').textContent = low.length;
   $('[data-inv-out]').textContent = tracked.filter(p => Number(p.stock || 0) <= 0).length;
   const results = products.filter(p => !query || [p.name,p.slug].join(' ').toLowerCase().includes(query));
-  tbody.innerHTML = results.length ? results.map(p => `<tr><td><div class="admin-table-product"><span class="admin-table-product-image"><img src="${esc(p.useRepositoryImages ? initialImage(p) : p.images?.[0] || p.imageUrl || initialImage(p))}" alt="" loading="lazy"></span><span><strong>${esc(p.name)}</strong><small>${esc(p.slug)}</small></span></div></td><td><label class="admin-switch"><input type="checkbox" data-stock-track="${esc(p.slug)}" ${p.trackInventory ? 'checked' : ''}><span></span><small>${p.trackInventory ? 'On' : 'Off'}</small></label></td><td><input class="admin-inline-number" type="number" min="0" step="1" value="${Number(p.stock || 0)}" data-stock-value="${esc(p.slug)}" ${p.trackInventory ? '' : 'disabled'} aria-label="Stock count for ${esc(p.name)}"></td><td><input class="admin-inline-number" type="number" min="0" step="1" value="${Number(p.lowStockThreshold ?? 5)}" data-stock-threshold="${esc(p.slug)}" aria-label="Low stock alert for ${esc(p.name)}"></td><td><button class="admin-row-action" type="button" data-edit-product="${esc(p.slug)}" aria-label="Edit ${esc(p.name)}"><i class="fa-solid fa-pen"></i></button></td></tr>`).join('') : '<tr><td colspan="5"><div class="admin-empty-table">No matching products.</div></td></tr>';
+  tbody.innerHTML = results.length ? results.map(p => `<tr class="admin-clickable-row" data-edit-product="${esc(p.slug)}" tabindex="0" aria-label="Edit ${esc(p.name)}"><td><div class="admin-table-product"><span class="admin-table-product-image"><img src="${esc(p.useRepositoryImages ? initialImage(p) : p.images?.[0] || p.imageUrl || initialImage(p))}" alt="" loading="lazy"></span><span><strong>${esc(p.name)}</strong><small>${esc(p.slug)}</small></span></div></td><td><label class="admin-switch"><input type="checkbox" data-stock-track="${esc(p.slug)}" ${p.trackInventory ? 'checked' : ''}><span></span><small>${p.trackInventory ? 'On' : 'Off'}</small></label></td><td><input class="admin-inline-number" type="number" min="0" step="1" value="${Number(p.stock || 0)}" data-stock-value="${esc(p.slug)}" ${p.trackInventory ? '' : 'disabled'} aria-label="Stock count for ${esc(p.name)}"></td><td><input class="admin-inline-number" type="number" min="0" step="1" value="${Number(p.lowStockThreshold ?? 5)}" data-stock-threshold="${esc(p.slug)}" aria-label="Low stock alert for ${esc(p.name)}"></td><td><button class="admin-row-action" type="button" data-edit-product="${esc(p.slug)}" aria-label="Edit ${esc(p.name)}"><i class="fa-solid fa-pen"></i></button></td></tr>`).join('') : '<tr><td colspan="5"><div class="admin-empty-table">No matching products.</div></td></tr>';
 }
 function populateProductCategoryFilter() {
   const options = categories.map(category => `<option value="${esc(category.slug)}">${esc(category.name)}</option>`).join('');
@@ -302,7 +340,7 @@ function renderOrders() {
     const matchesText = !search || [order.reference, order.customer?.name, order.customer?.email, order.customer?.phone].join(' ').toLowerCase().includes(search);
     return matchesText && (filter === 'all' || String(order.status || '').toLowerCase() === filter) && (payment === 'all' || String(order.paymentStatus || 'pending').toLowerCase() === payment);
   });
-  tbody.innerHTML = results.length ? results.map(order => `<tr><td><button type="button" class="admin-order-ref" data-open-order="${esc(order.reference)}">${esc(order.reference)}</button><small class="admin-table-sub">${(order.items || []).reduce((sum,item) => sum + Number(item.qty || 0), 0)} units</small></td><td><div class="admin-customer-cell"><strong>${esc(order.customer?.name || 'Customer')}</strong><small>${esc(order.customer?.email || order.customer?.phone || 'No contact details')}</small></div></td><td>${fmtDate(order.createdAt)}</td><td><strong>${money(order.amountDue)}</strong></td><td>${paymentPill(order)}</td><td>${fulfillmentPill(order.status)}</td><td><button type="button" class="admin-row-action" data-open-order="${esc(order.reference)}" aria-label="View order ${esc(order.reference)}"><i class="fa-solid fa-arrow-up-right-from-square"></i></button></td></tr>`).join('') : '<tr><td colspan="7"><div class="admin-empty-table">No orders match your filters.</div></td></tr>';
+  tbody.innerHTML = results.length ? results.map(order => `<tr class="admin-clickable-row" data-open-order="${esc(order.reference)}" tabindex="0" aria-label="Open order ${esc(order.reference)}"><td><button type="button" class="admin-order-ref" data-open-order="${esc(order.reference)}">${esc(order.reference)}</button><small class="admin-table-sub">${(order.items || []).reduce((sum,item) => sum + Number(item.qty || 0), 0)} units</small></td><td><div class="admin-customer-cell"><strong>${esc(order.customer?.name || 'Customer')}</strong><small>${esc(order.customer?.email || order.customer?.phone || 'No contact details')}</small></div></td><td>${fmtDate(order.createdAt)}</td><td><strong>${money(order.amountDue)}</strong></td><td>${paymentPill(order)}</td><td>${fulfillmentPill(order.status)}</td><td><button type="button" class="admin-row-action" data-open-order="${esc(order.reference)}" aria-label="View order ${esc(order.reference)}"><i class="fa-solid fa-arrow-up-right-from-square"></i></button></td></tr>`).join('') : '<tr><td colspan="7"><div class="admin-empty-table">No orders match your filters.</div></td></tr>';
   $('[data-orders-count]').textContent = `${results.length} orders`;
 }
 function renderCategories() {
@@ -343,12 +381,11 @@ function renderSubscribers() {
 function renderSetupChecklist() {
   const node = $('[data-setup-checklist]'); if (!node) return;
   const tasks = [
-    ['Firebase admin membership', 'Create admins/{your Firebase UID} with active: true or set the admin custom claim.'],
-    ['Product catalogue', 'Review draft descriptions, ingredients, directions and sizes before publishing.'],
-    ['Inventory', 'Enter real stock counts and enable tracking for products that have limited stock.'],
-    ['Cloudinary', 'Set the three Cloudinary environment variables in Netlify.'],
-    ['Paystack', 'Set the secret key and configure the Paystack webhook URL shown in README.md.'],
-    ['Resend', 'Verify your sender domain and set RESEND_API_KEY and RESEND_FROM_EMAIL.']
+    ['Store details', 'Check the contact information, pickup address and collection days.'],
+    ['Product catalogue', 'Review product names, descriptions, prices, sizes and ingredients.'],
+    ['Stock levels', 'Enter current quantities and turn on stock tracking where needed.'],
+    ['Online payments', 'Ask your website support person to confirm online payments are connected.'],
+    ['Customer emails', 'Ask your website support person to confirm order confirmations and status updates are sending.']
   ];
   node.innerHTML = tasks.map((task,i) => `<div class="admin-checklist-row"><span>${i+1}</span><div><strong>${esc(task[0])}</strong><small>${esc(task[1])}</small></div><i class="fa-regular fa-circle"></i></div>`).join('');
 }
@@ -358,7 +395,7 @@ function setView(name) {
   currentView = name;
   $$('.admin-view').forEach(view => view.classList.toggle('is-current', view.dataset.adminView === name));
   $$('[data-view]').forEach(button => button.classList.toggle('is-active', button.dataset.view === name));
-  const labels = { dashboard: 'Overview', products: 'Products', inventory: 'Inventory', orders: 'Orders', analytics: 'Sales analytics', categories: 'Categories', messages: 'Messages', subscribers: 'Subscribers', settings: 'Store settings' };
+  const labels = { dashboard: 'Overview', products: 'Products', inventory: 'Inventory', orders: 'Orders', analytics: 'Sales analytics', categories: 'Categories', messages: 'Messages', subscribers: 'Subscribers', settings: 'Store settings', account: 'Sign-in details' };
   $('[data-current-view]').textContent = labels[name] || name;
   $('[data-admin-sidebar]').classList.remove('is-open');
   document.body.classList.remove('admin-nav-open');
@@ -393,14 +430,38 @@ function fillProductForm(product = null) {
   set('imageVariantsJson', JSON.stringify(imageVariants, null, 2));
   set('advancedJson', JSON.stringify(product ? cleanForJson(product) : { slug: '', name: '', category: 'hair', price: 0, size: '', short: '', description: '', ingredients: '', directions: '', highlights: [], contains: [], active: true, stock: 0, trackInventory: false }, null, 2));
   renderDraftImages();
+  renderSetContentsPicker(product);
+  updateSetPickerVisibility();
   updateRepositoryImageState();
   setMessage('[data-product-form-feedback]', '');
   $('[data-product-dialog]').showModal();
 }
+
+function renderSetContentsPicker(product = null) {
+  const picker = $('[data-set-picker]');
+  const form = $('[data-product-form]');
+  if (!picker || !form) return;
+  const selected = new Set(String(form.elements.contains.value || '').split('\n').map(value => value.trim()).filter(Boolean));
+  picker.innerHTML = products.filter(item => item.category !== 'sets' && item.slug !== editingProductSlug).map(item => {
+    const image = item.useRepositoryImages ? initialImage(item) : item.images?.[0] || item.imageUrl || initialImage(item);
+    return `<label class="admin-set-option"><input type="checkbox" value="${esc(item.slug)}" ${selected.has(item.slug) ? 'checked' : ''}><img src="${esc(image)}" alt="" loading="lazy"><span><strong>${esc(item.name)}</strong><small>${money(minPrice(item))} · ${esc(item.size || 'Standard size')}</small></span><i class="fa-solid fa-check" aria-hidden="true"></i></label>`;
+  }).join('') || '<p class="admin-set-picker-empty">Add a few products before creating a complete care set.</p>';
+  picker.querySelectorAll('input[type="checkbox"]').forEach(checkbox => checkbox.addEventListener('change', syncSetContents));
+  syncSetContents();
+}
+function syncSetContents() {
+  const form = $('[data-product-form]'); if (!form) return;
+  form.elements.contains.value = $$('[data-set-picker] input:checked').map(input => input.value).join('\n');
+}
+function updateSetPickerVisibility() {
+  const wrap = $('[data-set-picker-wrap]');
+  if (wrap) wrap.hidden = $('[data-editor-category]')?.value !== 'sets';
+}
+
 function updateRepositoryImageState() {
   const useRepo = $('[data-use-repo-images]').checked;
   const productSlug = $('[data-product-form]').elements.slug.value || editingProductSlug;
-  const note = useRepo ? `Default image from images.js: ${initialImage({ slug: productSlug, category: $('[data-editor-category]').value })}` : `${draftImages.length} uploaded image${draftImages.length === 1 ? '' : 's'} ready to save.`;
+  const note = useRepo ? 'Using the original product photos supplied with the website.' : `${draftImages.length} image${draftImages.length === 1 ? '' : 's'} ready to save.`;
   let text = $('[data-repo-image-note]');
   if (!text) { text = document.createElement('p'); text.className = 'admin-image-note'; text.dataset.repoImageNote = ''; $('[data-image-controls], .admin-image-controls')?.prepend(text); }
   text.textContent = useRepo ? note : note;
@@ -470,7 +531,7 @@ function saveProduct(event) {
   const button = form.querySelector('[type="submit"]');
   (async () => {
     setBusy(button, true, 'Saving product…');
-    setMessage('[data-product-form-feedback]', 'Saving product details to Firebase…');
+    setMessage('[data-product-form-feedback]', 'Saving your product…');
     try {
       const raw = parseJsonField(form.elements.advancedJson.value, {}, 'Entire product document');
       const variants = parseJsonField(form.elements.variantsJson.value, [], 'Size variants');
@@ -505,7 +566,7 @@ function saveProduct(event) {
         await setDoc(doc(db, 'products', slug), product, { merge: true });
       }
       $('[data-product-dialog]').close(); toast(`${product.name} saved. The storefront will pick up the changes.`);
-    } catch (error) { setMessage('[data-product-form-feedback]', error.message || 'Could not save product.', true); }
+    } catch (error) { setMessage('[data-product-form-feedback]', friendlyError(error, 'We could not save this product. Please check your connection and try again.'), true); }
     finally { setBusy(button, false); }
   })();
 }
@@ -515,7 +576,7 @@ async function deleteProduct() {
   if (!confirm(`Delete “${existing?.name || editingProductSlug}” permanently? This cannot be undone.`)) return;
   const button = $('[data-delete-product]'); setBusy(button, true, 'Deleting…');
   try { await deleteDoc(doc(db, 'products', editingProductSlug)); $('[data-product-dialog]').close(); toast('Product deleted from the catalogue.'); }
-  catch (error) { setMessage('[data-product-form-feedback]', error.message, true); }
+  catch (error) { setMessage('[data-product-form-feedback]', friendlyError(error, 'We could not delete this product. Please try again.'), true); }
   finally { setBusy(button, false); }
 }
 function fillOrderDialog(reference) {
@@ -524,7 +585,12 @@ function fillOrderDialog(reference) {
   $('[data-order-dialog-ref]').textContent = activeOrder.reference;
   $('[data-order-dialog-subtitle]').textContent = `${activeOrder.customer?.name || 'Customer'} · Placed ${fmtDateTime(activeOrder.createdAt)}`;
   const order = activeOrder;
-  $('[data-order-dialog-body]').innerHTML = `<div class="admin-order-dialog-status"><div>${paymentPill(order)}<small>Payment provider: ${esc(order.paymentProvider || 'Paystack')}</small></div><div>${fulfillmentPill(order.status)}<small>Order fulfilment</small></div></div><div class="admin-order-info-grid"><div><span>Customer</span><strong>${esc(order.customer?.name || '')}</strong><a href="mailto:${encodeURIComponent(order.customer?.email || '')}">${esc(order.customer?.email || '')}</a><a href="tel:${esc(order.customer?.phone || '')}">${esc(order.customer?.phone || '')}</a></div><div><span>Deliver to</span><strong>${esc(order.delivery?.method === 'pickup' ? 'Pickup in North Kaneshie' : 'Home delivery')}</strong><small>${esc([order.delivery?.city, order.delivery?.region].filter(Boolean).join(', '))}</small><small>${esc(order.delivery?.address || '')}</small>${order.delivery?.notes ? `<small>Notes: ${esc(order.delivery.notes)}</small>` : ''}</div></div><div class="admin-order-lines"><h3>Items ordered</h3>${(order.items || []).map(item => `<div class="admin-order-line"><span><strong>${esc(item.name)}</strong><small>${esc([item.size, item.colorLabel || item.color].filter(Boolean).join(' · '))} · Qty ${Number(item.qty || 1)}</small></span><b>${money(item.lineTotal ?? Number(item.price) * Number(item.qty))}</b></div>`).join('')}</div><div class="admin-order-totals"><div><span>Subtotal</span><strong>${money(order.subtotal)}</strong></div><div><span>Processing fee</span><strong>${money(order.processingFee)}</strong></div><div><span>Paid total</span><strong>${money(order.amountDue)}</strong></div><small>Delivery fee is calculated separately after address review.</small></div>`;
+  const delivery = order.delivery || {};
+  const pickup = delivery.method === 'pickup';
+  const scheduled = delivery.scheduledDate || delivery.requestedDate || '';
+  const scheduledLabel = scheduled && /^\d{4}-\d{2}-\d{2}$/.test(scheduled) ? new Intl.DateTimeFormat('en-GH', { timeZone: 'Africa/Accra', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(`${scheduled}T12:00:00Z`)) : (delivery.scheduledDay || delivery.requestedDay || 'To be confirmed');
+  const address = pickup ? (delivery.pickupAddress || 'Ville Afrique, North Kaneshie') : [delivery.address, [delivery.city, delivery.region].filter(Boolean).join(', ')].filter(Boolean).join(' · ');
+  $('[data-order-dialog-body]').innerHTML = `<div class="admin-order-dialog-status"><div>${paymentPill(order)}<small>${esc(order.paymentProvider || 'Secure online payment')}</small></div><div>${fulfillmentPill(order.status)}<small>Current order status</small></div></div><div class="admin-order-info-grid"><div><span>Customer</span><strong>${esc(order.customer?.name || 'Customer')}</strong><a href="mailto:${encodeURIComponent(order.customer?.email || '')}">${esc(order.customer?.email || 'No email provided')}</a><a href="tel:${esc(order.customer?.phone || '')}">${esc(order.customer?.phone || 'No phone provided')}</a></div><div><span>${pickup ? 'Pickup details' : 'Delivery details'}</span><strong>${esc(pickup ? 'Pickup · Ville Afrique' : 'Home delivery')}</strong><small><b>Scheduled for:</b> ${esc(scheduledLabel)}</small><small><b>${pickup ? 'Pickup address' : 'Address'}:</b> ${esc(address || 'To be confirmed')}</small>${pickup ? `<small>${esc(delivery.pickupInstructions || 'Please wait for our confirmation before travelling to collect your order.')}</small>` : `<small>${esc(delivery.deliveryNote || 'Delivery charges are confirmed separately after the location is reviewed.')}</small>`}${delivery.notes ? `<small>Order note: ${esc(delivery.notes)}</small>` : ''}</div></div><div class="admin-order-lines"><div class="admin-order-section-heading"><div><span>ORDER CONTENTS</span><h3>Items in this order</h3></div><small>${(order.items || []).reduce((sum,item) => sum + Number(item.qty || 0), 0)} item(s)</small></div>${(order.items || []).map(item => `<div class="admin-order-line"><img class="admin-order-item-image" src="${esc(item.image || initialImage({ slug: item.slug, category: item.category }))}" alt="${esc(item.name)}" loading="lazy"><span><strong>${esc(item.name)}</strong><small>${esc([item.size, item.colorLabel || item.color].filter(Boolean).join(' · '))} · Qty ${Number(item.qty || 1)}</small></span><b>${money(item.lineTotal ?? Number(item.price) * Number(item.qty))}</b></div>`).join('')}</div><div class="admin-order-totals"><div><span>Subtotal</span><strong>${money(order.subtotal)}</strong></div><div><span>Processing fee</span><strong>${money(order.processingFee)}</strong></div><div class="admin-order-paid-total"><span>Paid today</span><strong>${money(order.amountDue)}</strong></div><small>${pickup ? 'Pickup is arranged for the date above. The team will confirm before collection.' : 'Delivery fee is not included in the payment. Confirm it separately with the customer.'}</small></div>`;
   $('[data-order-status-select]').value = order.status || 'processing';
   setMessage('[data-order-update-feedback]', '');
   $('[data-order-dialog]').showModal();
@@ -540,7 +606,7 @@ async function saveOrderStatus() {
     if (!response.ok) throw new Error(data.error || 'Could not update order status.');
     setMessage('[data-order-update-feedback]', data.message || 'Order status updated.');
     toast(data.message || 'Order updated.');
-  } catch (error) { setMessage('[data-order-update-feedback]', error.message, true); }
+  } catch (error) { setMessage('[data-order-update-feedback]', friendlyError(error, 'We could not update this order right now. Please try again.'), true); }
   finally { setBusy(button, false); }
 }
 
@@ -564,9 +630,9 @@ function fillCategoryDialog(slug) {
 async function saveCategory(event) {
   event.preventDefault(); const form = event.currentTarget; const button = form.querySelector('[type="submit"]'); setBusy(button, true, 'Saving…');
   try {
-    const oldSlug = form.elements.originalSlug.value; const name = form.elements.name.value.trim(); const slug = slugify(form.elements.slug.value);
-    if (!name || !slug) throw new Error('Enter a category name and a valid slug.');
-    if (slug !== oldSlug && categories.some(c => c.slug === slug)) throw new Error('That category slug already exists.');
+    const oldSlug = form.elements.originalSlug.value; const name = form.elements.name.value.trim(); const slug = slugify(form.elements.slug.value || name);
+    if (!name || !slug) throw new Error('Enter a category name.');
+    if (slug !== oldSlug && categories.some(c => c.slug === slug)) throw new Error('A category with that name already exists. Try a different name.');
     const updates = { slug, name, active: form.elements.active.checked, updatedAt: serverTimestamp() };
     if (slug !== oldSlug) {
       const batch = writeBatch(db); batch.set(doc(db, 'categories', slug), { ...updates, sortOrder: categories.find(c => c.slug === oldSlug)?.sortOrder || categories.length + 1, createdAt: serverTimestamp() }); batch.delete(doc(db, 'categories', oldSlug));
@@ -605,8 +671,36 @@ async function saveSettings(event) {
   try {
     const payload = Object.fromEntries(new FormData(form).entries()); payload.updatedAt = serverTimestamp(); payload.updatedBy = currentUser.email || currentUser.uid;
     await setDoc(doc(db, 'settings', 'store'), payload, { merge: true }); setMessage('[data-settings-feedback]', 'Store preferences saved.'); toast('Store settings saved.');
-  } catch (error) { setMessage('[data-settings-feedback]', error.message, true); }
+  } catch (error) { setMessage('[data-settings-feedback]', friendlyError(error, 'We could not save your store settings. Please try again.'), true); }
   finally { setBusy(button, false); }
+}
+
+async function saveSignInDetails(event) {
+  event.preventDefault();
+  const form = event.currentTarget; const button = form.querySelector('[type="submit"]');
+  const currentPassword = form.elements.currentPassword.value;
+  const newEmail = form.elements.newEmail.value.trim();
+  const newPassword = form.elements.newPassword.value;
+  const confirmation = form.elements.confirmPassword.value;
+  if (!currentUser || !currentUser.email) { setMessage('[data-auth-settings-feedback]', 'Please sign in again before changing these details.', true); return; }
+  if (!newEmail && !newPassword) { setMessage('[data-auth-settings-feedback]', 'Enter a new email address or a new password to continue.', true); return; }
+  if (newPassword && newPassword.length < 8) { setMessage('[data-auth-settings-feedback]', 'Your new password must have at least 8 characters.', true); return; }
+  if (newPassword && newPassword !== confirmation) { setMessage('[data-auth-settings-feedback]', 'The new passwords do not match.', true); return; }
+  setBusy(button, true, 'Saving sign-in details…'); setMessage('[data-auth-settings-feedback]', 'Checking your current password…');
+  try {
+    const credential = EmailAuthProvider.credential(currentUser.email, currentPassword);
+    await reauthenticateWithCredential(currentUser, credential);
+    if (newEmail && newEmail.toLowerCase() !== String(currentUser.email).toLowerCase()) await updateEmail(currentUser, newEmail);
+    if (newPassword) await updatePassword(currentUser, newPassword);
+    const emailNode = $('[data-admin-user]'); if (emailNode) emailNode.textContent = currentUser.email || newEmail;
+    form.elements.currentPassword.value = ''; form.elements.newPassword.value = ''; form.elements.confirmPassword.value = '';
+    form.elements.newEmail.value = currentUser.email || newEmail;
+    setMessage('[data-auth-settings-feedback]', 'Your sign-in details have been updated. Keep them somewhere safe.');
+    toast('Sign-in details updated.');
+  } catch (error) {
+    console.warn('Sign-in details update failed:', error);
+    setMessage('[data-auth-settings-feedback]', friendlyError(error, 'We could not update those details. Check your current password and try again.'), true);
+  } finally { setBusy(button, false); }
 }
 
 function downloadCSV(filename, rows) {
@@ -631,7 +725,7 @@ function exportSubscribers() {
 function bindEvents() {
   $('[data-login-form]').addEventListener('submit', async event => {
     event.preventDefault(); const form = event.currentTarget; const button = form.querySelector('[type="submit"]');
-    if (!configReady()) { setMessage('[data-login-message]', 'Before signing in, replace the placeholder values in firebase-config.js with your Firebase Web App config.', true); return; }
+    if (!configReady()) { setMessage('[data-login-message]', 'Sign-in is not ready yet. Please contact the person who set up your store.', true); return; }
     setBusy(button, true, 'Signing in…'); setMessage('[data-login-message]', 'Checking your credentials…');
     try { await signInWithEmailAndPassword(auth, form.elements.email.value.trim(), form.elements.password.value); setMessage('[data-login-message]', ''); }
     catch (error) { setMessage('[data-login-message]', friendlyAuthError(error), true); }
@@ -654,6 +748,7 @@ function bindEvents() {
   $('[data-category-edit-form]').addEventListener('submit', saveCategory);
   $('[data-delete-category]').addEventListener('click', deleteCategory);
   $('[data-settings-form]').addEventListener('submit', saveSettings);
+  $('[data-auth-settings-form]').addEventListener('submit', saveSignInDetails);
   $('[data-save-order-status]').addEventListener('click', saveOrderStatus);
   $('[data-sales-period]').addEventListener('change', renderDashboard);
   $('[data-analytics-period]').addEventListener('change', renderAnalytics);
@@ -669,7 +764,8 @@ function bindEvents() {
   $('[data-export-subscribers]').addEventListener('click', exportSubscribers);
   $('[data-admin-menu]').addEventListener('click', () => { const sidebar = $('[data-admin-sidebar]'); const open = !sidebar.classList.contains('is-open'); sidebar.classList.toggle('is-open', open); document.body.classList.toggle('admin-nav-open', open); $('[data-admin-menu]').setAttribute('aria-expanded', String(open)); });
   $$('[data-admin-view] button[data-view]').forEach(button => button.addEventListener('click', () => setView(button.dataset.view)));
-  $('[data-product-form]').elements.slug.addEventListener('input', event => { if (!editingProductSlug) $('[data-product-form]').elements.advancedJson.value = $('[data-product-form]').elements.advancedJson.value; });
+  $('[data-product-form]').elements.name.addEventListener('input', event => { if (!editingProductSlug) $('[data-product-form]').elements.slug.value = slugify(event.target.value); });
+  $('[data-editor-category]').addEventListener('change', () => { updateSetPickerVisibility(); renderSetContentsPicker(); });
   $('[data-product-form]').elements.useRepositoryImages.addEventListener('change', updateRepositoryImageState);
   $('[data-product-form]').elements.images.addEventListener('input', event => { draftImages = event.target.value.split('\n').map(v => v.trim()).filter(Boolean); renderDraftImages(); });
   $('[data-browse-images]').addEventListener('click', event => { event.stopPropagation(); $('[data-image-file]').click(); });
@@ -693,8 +789,16 @@ function bindEvents() {
     const files = [...(event.clipboardData?.items || [])].map(item => item.getAsFile?.()).filter(Boolean);
     if (files.length) { event.preventDefault(); handleImageFiles(files); }
   });
+  document.addEventListener('keydown', event => {
+    if (!['Enter', ' '].includes(event.key)) return;
+    const row = event.target.closest('tr.admin-clickable-row');
+    if (!row || event.target.closest('button,a,input,select,textarea')) return;
+    event.preventDefault();
+    if (row.dataset.editProduct) fillProductForm(products.find(product => product.slug === row.dataset.editProduct));
+    else if (row.dataset.openOrder) fillOrderDialog(row.dataset.openOrder);
+  });
   document.addEventListener('click', event => {
-    const edit = event.target.closest('[data-edit-product]'); if (edit) { fillProductForm(products.find(p => p.slug === edit.dataset.editProduct)); return; }
+    const edit = event.target.closest('[data-edit-product]'); if (edit) { if (edit.matches('tr') && event.target.closest('button,input,select,textarea,a')) return; fillProductForm(products.find(p => p.slug === edit.dataset.editProduct)); return; }
     const openOrder = event.target.closest('[data-open-order]'); if (openOrder) { fillOrderDialog(openOrder.dataset.openOrder); return; }
     const editCategory = event.target.closest('[data-edit-category]'); if (editCategory) { fillCategoryDialog(editCategory.dataset.editCategory); return; }
     const removeImage = event.target.closest('[data-remove-image]'); if (removeImage) { draftImages.splice(Number(removeImage.dataset.removeImage),1); $('[data-use-repo-images]').checked = draftImages.length === 0; renderDraftImages(); updateRepositoryImageState(); return; }
@@ -726,18 +830,28 @@ function bindEvents() {
   document.addEventListener('click', event => { if (!document.body.classList.contains('admin-nav-open')) return; if ($('[data-admin-sidebar]').contains(event.target) || $('[data-admin-menu]').contains(event.target)) return; $('[data-admin-sidebar]').classList.remove('is-open'); document.body.classList.remove('admin-nav-open'); $('[data-admin-menu]').setAttribute('aria-expanded', 'false'); });
   document.addEventListener('keydown', event => { if (event.key === 'Escape') { $('[data-admin-sidebar]')?.classList.remove('is-open'); document.body.classList.remove('admin-nav-open'); $('[data-admin-menu]')?.setAttribute('aria-expanded', 'false'); } });
 }
+function friendlyError(error, fallback = 'We could not complete that change. Please check your connection and try again.') {
+  const code = String(error?.code || '');
+  if (code.includes('permission-denied') || code.includes('unauthenticated') || code.includes('auth/requires-recent-login')) return 'For your security, please sign in again and retry that change.';
+  if (code.includes('network') || /network|offline/i.test(error?.message || '')) return 'Please check your internet connection and try again.';
+  if (code.includes('email-already-in-use')) return 'That email address is already linked to another account.';
+  if (code.includes('weak-password')) return 'Choose a stronger password with at least 8 characters.';
+  if (code.includes('invalid-email')) return 'Please enter a valid email address.';
+  return fallback;
+}
 function friendlyAuthError(error) {
   const code = error?.code || '';
-  if (code.includes('invalid-credential') || code.includes('wrong-password') || code.includes('user-not-found')) return 'Email or password was not recognised.';
-  if (code.includes('too-many-requests')) return 'Too many attempts. Wait before trying again.';
-  if (code.includes('network-request-failed')) return 'Network error. Check your internet connection and try again.';
-  return error?.message || 'Could not sign in.';
+  if (code.includes('invalid-credential') || code.includes('wrong-password') || code.includes('user-not-found') || code.includes('invalid-login-credentials')) return 'Email or password was not recognised.';
+  if (code.includes('too-many-requests')) return 'There have been too many attempts. Please wait a moment and try again.';
+  if (code.includes('network-request-failed')) return 'Please check your internet connection and try again.';
+  return 'We could not sign you in. Please check your details and try again.';
 }
 
 bindEvents();
 if (!configReady()) {
-  setMessage('[data-login-message]', 'Setup needed: open firebase-config.js and add the Firebase Web App config. Then create an admins/{your UID} document with active: true in Firestore.', true);
+  setLoading(false);
+  setMessage('[data-login-message]', 'Sign-in is not ready yet. Please contact the person who set up your store.', true);
 } else {
   try { await startApp(); }
-  catch (error) { setMessage('[data-login-message]', `Firebase could not initialise: ${error.message}`, true); }
+  catch (error) { console.error('Sign-in service could not start:', error); setLoading(false); setMessage('[data-login-message]', 'We could not open sign-in right now. Please refresh or contact the store owner.', true); }
 }
