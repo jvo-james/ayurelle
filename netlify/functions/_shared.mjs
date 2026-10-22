@@ -109,6 +109,7 @@ export function calculateItems(cart, products) {
     const product = bySlug.get(slug);
     const qty = Math.floor(Number(raw.qty));
     if (!product || product.active === false) throw Object.assign(new Error(`One of the products is no longer available: ${slug}`), { statusCode: 400 });
+    if (product.outOfStock === true) throw Object.assign(new Error(`${product.name || slug} is currently sold out. Please remove it from your bag and choose another product.`), { statusCode: 409 });
     if (!Number.isFinite(qty) || qty < 1 || qty > 50) throw Object.assign(new Error('Please check the quantities in your bag.'), { statusCode: 400 });
     if (product.trackInventory && Number(product.stock || 0) < qty) throw Object.assign(new Error(`${product.name} has fewer units in stock than requested. Please update your bag.`), { statusCode: 409 });
     let option = null;
