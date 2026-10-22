@@ -1,5 +1,5 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, getIdToken, EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, getIdToken, EmailAuthProvider, reauthenticateWithCredential, verifyBeforeUpdateEmail, updatePassword } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, getDoc, getDocs, getDocsFromCache, setDoc, updateDoc, deleteDoc, deleteField, serverTimestamp, writeBatch } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -853,30 +853,103 @@ async function saveSettings(event) {
 
 async function saveSignInDetails(event) {
   event.preventDefault();
-  const form = event.currentTarget; const button = form.querySelector('[type="submit"]');
+  const form = event.currentTarget;
+  const button = form.querySelector('[type="submit"]');
   const currentPassword = form.elements.currentPassword.value;
   const newEmail = form.elements.newEmail.value.trim();
   const newPassword = form.elements.newPassword.value;
   const confirmation = form.elements.confirmPassword.value;
-  if (!currentUser || !currentUser.email) { setMessage('[data-auth-settings-feedback]', 'Please sign in again before changing these details.', true); return; }
-  if (!newEmail && !newPassword) { setMessage('[data-auth-settings-feedback]', 'Enter a new email address or a new password to continue.', true); return; }
-  if (newPassword && newPassword.length < 8) { setMessage('[data-auth-settings-feedback]', 'Your new password must have at least 8 characters.', true); return; }
-  if (newPassword && newPassword !== confirmation) { setMessage('[data-auth-settings-feedback]', 'The new passwords do not match.', true); return; }
-  setBusy(button, true, 'Saving sign-in details…'); setMessage('[data-auth-settings-feedback]', 'Checking your current password…');
+  const emailChanged = !!newEmail && newEmail.toLowerCase() !== String(currentUser?.email || '').toLowerCase();
+  const passwordRequested = !!newPassword;
+
+  if (!currentUser || !currentUser.email) {
+    setMessage('[data-auth-settings-feedback]', 'Please sign in again before changing these details.', true);
+    return;
+  }
+  if (!emailChanged && !passwordRequested) {
+    setMessage('[data-auth-settings-feedback]', 'Enter a different email address or a new password to continue.', true);
+    return;
+  }
+  if (passwordRequested && newPassword.length < 8) {
+    setMessage('[data-auth-settings-feedback]', 'Your new password must have at least 8 characters.', true);
+    return;
+  }
+  if (passwordRequested && newPassword !== confirmation) {
+    setMessage('[data-auth-settings-feedback]', 'The new passwords do not match.', true);
+    return;
+  }
+
+  setBusy(button, true, 'Saving sign-in details…');
+  setMessage('[data-auth-settings-feedback]', 'Checking your current password…');
   try {
     const credential = EmailAuthProvider.credential(currentUser.email, currentPassword);
     await reauthenticateWithCredential(currentUser, credential);
-    if (newEmail && newEmail.toLowerCase() !== String(currentUser.email).toLowerCase()) await updateEmail(currentUser, newEmail);
-    if (newPassword) await updatePassword(currentUser, newPassword);
-    const emailNode = $('[data-admin-user]'); if (emailNode) emailNode.textContent = currentUser.email || newEmail;
-    form.elements.currentPassword.value = ''; form.elements.newPassword.value = ''; form.elements.confirmPassword.value = '';
-    form.elements.newEmail.value = currentUser.email || newEmail;
-    setMessage('[data-auth-settings-feedback]', 'Your sign-in details have been updated. Keep them somewhere safe.');
-    toast('Sign-in details updated.');
   } catch (error) {
-    console.warn('Sign-in details update failed:', error);
-    setMessage('[data-auth-settings-feedback]', friendlyError(error, 'We could not update those details. Check your current password and try again.'), true);
-  } finally { setBusy(button, false); }
+    console.warn('Account reauthentication failed:', error?.code || error?.message || error);
+    setMessage('[data-auth-settings-feedback]', accountChangeError(error, 'confirm your current password'), true);
+    setBusy(button, false);
+    return;
+  }
+
+  // Try each requested change separately. A problem sending an email-verification
+  // link should not prevent an otherwise valid password change from succeeding.
+  let verificationSent = false;
+  let passwordUpdated = false;
+  const failures = [];
+
+  if (emailChanged) {
+    setMessage('[data-auth-settings-feedback]', 'Sending a verification link to your new email…');
+    try {
+      // updateEmail() is blocked when Firebase email-enumeration protection is
+      // enabled. This supported flow verifies ownership before changing the email.
+      await verifyBeforeUpdateEmail(currentUser, newEmail);
+      verificationSent = true;
+    } catch (error) {
+      console.warn('Email change request failed:', error?.code || error?.message || error);
+      failures.push(accountChangeError(error, 'send the email verification link'));
+    }
+  }
+
+  if (passwordRequested) {
+    setMessage('[data-auth-settings-feedback]', verificationSent ? 'Email verification sent. Updating your password…' : 'Updating your password…');
+    try {
+      await updatePassword(currentUser, newPassword);
+      passwordUpdated = true;
+    } catch (error) {
+      console.warn('Password change failed:', error?.code || error?.message || error);
+      failures.push(accountChangeError(error, 'update your password'));
+    }
+  }
+
+  form.elements.currentPassword.value = '';
+  if (passwordUpdated) {
+    form.elements.newPassword.value = '';
+    form.elements.confirmPassword.value = '';
+  }
+  const successes = [];
+  if (verificationSent) successes.push(`A verification link has been sent to ${newEmail}. Your sign-in email will change only after you open that link.`);
+  if (passwordUpdated) successes.push('Your password has been updated.');
+  const message = [...successes, ...failures].join(' ');
+  setMessage('[data-auth-settings-feedback]', message || 'No changes were made.', failures.length > 0 || !successes.length);
+  if (successes.length && !failures.length) toast(verificationSent && passwordUpdated ? 'Verification email sent and password updated.' : verificationSent ? 'Verification email sent.' : 'Password updated.');
+  else if (failures.length) toast('Some sign-in details could not be updated. See the message for details.', 'error');
+  setBusy(button, false);
+}
+
+function accountChangeError(error, action) {
+  const code = String(error?.code || '');
+  if (code.includes('invalid-credential') || code.includes('wrong-password') || code.includes('invalid-login-credentials')) {
+    return 'Your current password was not recognised. Check it and try again.';
+  }
+  if (code.includes('email-already-in-use')) return 'That email address is already linked to another account.';
+  if (code.includes('invalid-email')) return 'Please enter a valid email address.';
+  if (code.includes('weak-password') || code.includes('password-does-not-meet-requirements')) return 'Choose a stronger password that meets the account password requirements.';
+  if (code.includes('requires-recent-login')) return 'For your security, sign out and sign in again before trying this change.';
+  if (code.includes('too-many-requests')) return 'Too many attempts were made. Please wait a while and try again.';
+  if (code.includes('network-request-failed') || /network|offline/i.test(error?.message || '')) return 'Please check your internet connection and try again.';
+  if (code.includes('unauthorized-continue-uri') || code.includes('invalid-continue-uri')) return 'Firebase email verification is not configured for this website. The site administrator needs to add the website domain in Firebase Authentication settings.';
+  if (code.includes('operation-not-allowed')) return 'This change is not enabled for the account. Please check the Firebase sign-in settings.';
+  return `We could not ${action}. Please try again.`;
 }
 
 async function sendSubscriberCampaign(event) {
