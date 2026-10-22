@@ -6,9 +6,37 @@ export default async request => {
     if (!process.env.PAYSTACK_SECRET_KEY) return json({ error: 'Online payment is not configured yet. Please contact Ayurélle to complete your order.' }, 503);
     const input = await readJson(request);
     const customer = { name: safeString(input.customer?.name, 100), email: normalEmail(input.customer?.email), phone: safeString(input.customer?.phone, 40) };
-    const delivery = { region: safeString(input.delivery?.region, 70), city: safeString(input.delivery?.city, 80), method: input.delivery?.method === 'pickup' ? 'pickup' : 'delivery', address: safeString(input.delivery?.address, 500), notes: safeString(input.delivery?.notes, 600) };
-    if (!customer.name || !customer.email || !customer.phone || !delivery.region || !delivery.city || (delivery.method !== 'pickup' && !delivery.address)) return json({ error: 'Please complete your name, email, phone and delivery details.' }, 400);
+    const method = input.delivery?.method === 'pickup' ? 'pickup' : 'delivery';
+    const delivery = { region: safeString(input.delivery?.region, 70), city: safeString(input.delivery?.city, 80), method, address: safeString(input.delivery?.address, 500), notes: safeString(input.delivery?.notes, 600) };
+    if (!customer.name || !customer.email || !customer.phone || (method === 'delivery' && (!delivery.region || !delivery.city || !delivery.address))) return json({ error: 'Please complete your name, email, phone and the details for your chosen fulfilment method.' }, 400);
     const { db, FieldValue } = getAdminServices();
+    let savedSettings = {};
+    try { const settingsSnap = await db.collection('settings').doc('store').get(); if (settingsSnap.exists) savedSettings = settingsSnap.data() || {}; } catch (settingsError) { console.warn('Using default fulfilment settings:', settingsError.message); }
+    const defaults = { pickupAddress: 'Ville Afrique, North Kaneshie', pickupInstructions: 'Pickup is available on Wednesdays and Saturdays. We will contact you when your order is ready. Please wait for our confirmation before travelling to collect it.', deliveryDays: 'Wednesday, Saturday', pickupDays: 'Wednesday, Saturday', deliveryNote: 'Delivery charges are confirmed separately after your delivery location is reviewed.', orderNote: 'Orders are prepared for the next available Wednesday or Saturday.' };
+    const setting = key => safeString(savedSettings[key] || defaults[key], 500);
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const allowedText = method === 'pickup' ? setting('pickupDays') : setting('deliveryDays');
+    const allowedDays = new Set(allowedText.split(/[;,\n]/).map(value => dayNames.find(day => day.toLowerCase() === value.trim().toLowerCase())).filter(Boolean));
+    if (!allowedDays.size) ['Wednesday', 'Saturday'].forEach(day => allowedDays.add(day));
+    // Ghana is UTC+0. Select a strictly future fulfilment date on the server so
+    // the browser cannot submit a stale or arbitrary delivery promise.
+    const now = new Date();
+    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    let scheduledDate = '', scheduledDay = '';
+    for (let offset = 1; offset <= 7; offset++) {
+      const candidate = new Date(start.getTime() + offset * 86400000);
+      if (allowedDays.has(dayNames[candidate.getUTCDay()])) {
+        scheduledDate = `${candidate.getUTCFullYear()}-${String(candidate.getUTCMonth() + 1).padStart(2, '0')}-${String(candidate.getUTCDate()).padStart(2, '0')}`;
+        scheduledDay = dayNames[candidate.getUTCDay()];
+        break;
+      }
+    }
+    Object.assign(delivery, {
+      scheduledDate, scheduledDay,
+      availableDays: allowedText,
+      deliveryNote: setting('deliveryNote'), orderNote: setting('orderNote'),
+      ...(method === 'pickup' ? { pickupAddress: setting('pickupAddress'), pickupInstructions: setting('pickupInstructions') } : {})
+    });
     const catalogue = await loadServerCatalogue(db);
     const priced = calculateItems(input.items, catalogue.products);
     const crypto = await import('node:crypto');

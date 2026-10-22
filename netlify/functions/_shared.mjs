@@ -79,7 +79,19 @@ export async function safeSendEmail(args) {
 export async function loadServerCatalogue(db) {
   if (!db) return { products: fallbackProducts, categories: fallbackCategories };
   const [productSnap, categorySnap] = await Promise.all([db.collection('products').get(), db.collection('categories').get()]);
-  const products = productSnap.docs.map(doc => ({ ...doc.data(), id: doc.id, slug: doc.data().slug || doc.id })).filter(p => p.active !== false);
+  const products = productSnap.docs.map(doc => {
+    const product = { ...doc.data(), id: doc.id, slug: doc.data().slug || doc.id };
+    // These three items are sold in a single label-confirmed size. Ignore old
+    // variant records so a previous configuration cannot block checkout.
+    if (product.slug === 'ayur-hair-growth-oil') { delete product.variants; product.size = product.sizeDetail = '100 ml'; }
+    if (product.slug === 'ayur-hair-growth-butter') { delete product.variants; product.size = product.sizeDetail = '250 ml'; }
+    if (product.slug === 'ayur-silk-protein-mask') { delete product.variants; product.name = 'Prodiva Protein Mask'; product.size = product.sizeDetail = '250 ml'; }
+    if (product.slug === 'ayur-deep-conditioner') product.size = product.sizeDetail = '250 ml';
+    if (product.slug === 'ayur-leave-in-conditioner') product.size = product.sizeDetail = '250 ml';
+    if (product.slug === 'ayur-hair-tea') product.size = product.sizeDetail = '200 g';
+    if (product.slug === 'ayur-scalp-detox-mist') product.name = 'Rosemary Water Spray';
+    return product;
+  }).filter(p => p.active !== false);
   const categories = categorySnap.docs.map(doc => ({ ...doc.data(), id: doc.id, slug: doc.data().slug || doc.id })).filter(c => c.active !== false);
   // An existing collection is authoritative even when all its documents are
   // hidden. Falling back in that case would accidentally republish products.
