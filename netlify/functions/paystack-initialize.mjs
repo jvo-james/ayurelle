@@ -39,18 +39,42 @@ export default async request => {
     });
     const catalogue = await loadServerCatalogue(db);
     const priced = calculateItems(input.items, catalogue.products);
-    const crypto = await import('node:crypto');
-    const reference = `AYR-${Date.now()}-${crypto.randomBytes(12).toString('hex').toUpperCase()}`;
     const origin = siteUrl();
     if (!origin) return json({ error: 'SITE_URL is not configured. Add your public Netlify site URL.' }, 503);
-    const order = {
-      reference, customer, delivery, items: priced.items,
-      subtotal: priced.subtotal, processingFee: priced.processingFee, amountDue: priced.amountDue,
-      currency: 'GHS', paymentProvider: 'paystack', paymentStatus: 'pending', status: 'pending payment',
-      createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp(),
-      emailConfirmationSent: false, adminOrderEmailSent: false
-    };
-    await db.collection('orders').doc(reference).set(order);
+    const counterRef = db.collection('store_metadata').doc('orderCounter');
+    let reference = '';
+    await db.runTransaction(async transaction => {
+      const counter = await transaction.get(counterRef);
+      let lastNumber = Number(counter.exists ? counter.data()?.lastNumber || 0 : 0);
+      if (!counter.exists) {
+        const existing = await transaction.get(db.collection('orders'));
+        lastNumber = Math.max(lastNumber, existing.size);
+        for (const existingOrder of existing.docs) {
+          const data = existingOrder.data() || {};
+          const number = Number(data.orderSequence || 0);
+          const printed = String(data.orderNumber || data.reference || existingOrder.id).match(/^AYR-(\d{5,})$/);
+          lastNumber = Math.max(lastNumber, number, printed ? Number(printed[1]) : 0);
+        }
+      }
+      let nextNumber = lastNumber + 1;
+      let orderRef;
+      while (true) {
+        reference = `AYR-${String(nextNumber).padStart(5, '0')}`;
+        orderRef = db.collection('orders').doc(reference);
+        const collision = await transaction.get(orderRef);
+        if (!collision.exists) break;
+        nextNumber++;
+      }
+      const order = {
+        reference, orderNumber: reference, orderSequence: nextNumber, customer, delivery, items: priced.items,
+        subtotal: priced.subtotal, processingFee: priced.processingFee, amountDue: priced.amountDue,
+        currency: 'GHS', paymentProvider: 'paystack', paymentStatus: 'pending', status: 'pending payment',
+        createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp(),
+        emailConfirmationSent: false, adminOrderEmailSent: false
+      };
+      transaction.set(counterRef, { lastNumber: nextNumber, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+      transaction.create(orderRef, order);
+    });
     const providerResponse = await fetch('https://api.paystack.co/transaction/initialize', {
       method: 'POST', headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`, 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ email: customer.email, amount: Math.round(priced.amountDue * 100), currency: 'GHS', channels: ['card', 'mobile_money'], reference, callback_url: `${origin}/confirmation.html`, metadata: { order_reference: reference, customer_name: customer.name, phone: customer.phone, custom_fields: [{ display_name: 'Order reference', variable_name: 'order_reference', value: reference }] } })

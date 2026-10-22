@@ -10,7 +10,7 @@ export default async request => {
     if (transaction.status !== 'success') return json({ paid: false, status: transaction.status || 'pending', message: 'Payment has not been confirmed yet.' }, 402);
     const { db } = getAdminServices();
     const order = await finalizePaidOrder(db, reference, transaction);
-    return json({ paid: true, reference, order: { reference, status: order.status, paymentStatus: order.paymentStatus, customer: order.customer, delivery: order.delivery, items: order.items, subtotal: order.subtotal, processingFee: order.processingFee, amountDue: order.amountDue, currency: order.currency, paidAt: order.paidAt || null } });
+    return json({ paid: true, reference, order: { reference, orderNumber: order.orderNumber || reference, status: order.status, paymentStatus: order.paymentStatus, customer: order.customer, delivery: order.delivery, items: order.items, subtotal: order.subtotal, processingFee: order.processingFee, amountDue: order.amountDue, currency: order.currency, paidAt: order.paidAt || null } });
   } catch (error) {
     console.error('paystack verify:', error.message);
     return json({ error: error.statusCode ? error.message : 'We could not verify the payment right now. Please refresh in a moment or contact Ayurélle with your payment reference.' }, error.statusCode || 500);

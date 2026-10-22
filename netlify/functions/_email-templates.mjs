@@ -10,7 +10,7 @@ export function emailTemplate(type, data = {}) {
   const order = data.order || {};
   const customer = order.customer || {};
   const name = esc(data.name || customer.name || 'there');
-  const ref = esc(data.reference || order.reference || 'Pending');
+  const ref = esc(order.orderNumber || data.orderNumber || data.reference || order.reference || 'Pending');
   const email = esc(customer.email || data.email || '');
   const subtotal = money(order.subtotal);
   const fee = money(order.processingFee);
@@ -49,6 +49,13 @@ export function emailTemplate(type, data = {}) {
     const subtitle = 'A visitor sent a message using the Ayurélle Organics contact form.';
     html = layout({ eyebrow: 'NEW CUSTOMER MESSAGE', title: `An enquiry from ${name}.`, subtitle, body: `<p><strong>Email:</strong> <a style="color:#173a25" href="mailto:${email}">${email}</a></p><p><strong>Topic:</strong> ${esc(data.topic)}</p><div style="padding:18px;background:#f7f3e9;border-left:2px solid #c5a13b;white-space:pre-wrap">${esc(data.message)}</div>`, buttonLabel: 'Reply by email', buttonUrl: `mailto:${encodeURIComponent(data.email || '')}?subject=${encodeURIComponent('Re: Ayurélle Organics enquiry')}` });
     text = textVersion('New website enquiry', subtitle, [`Name: ${name}`, `Email: ${email}`, `Topic: ${data.topic}`, `Message: ${data.message}`]);
+  } else if (type === 'contact-reply') {
+    const replySubject = String(data.subject || 'A reply from Ayurélle Organics').replace(/[\r\n]+/g, ' ').slice(0, 140);
+    const replyMessage = String(data.message || '').slice(0, 5000);
+    subject = replySubject;
+    const subtitle = `Hello ${name}, thank you for contacting Ayurélle Organics. Here is a reply from our team.`;
+    html = layout({ eyebrow: 'A NOTE FROM AYURÉLLE', title: 'We are here to help.', subtitle, body: `<div style="padding:18px;background:#f7f3e9;border-left:2px solid #c5a13b;white-space:pre-wrap;overflow-wrap:anywhere;color:#4d5a4e">${esc(replyMessage).replace(/\n/g, '<br>')}</div><p style="margin-top:20px">You can reply directly to this email if you need further help.</p>` });
+    text = textVersion(replySubject, subtitle, [replyMessage]);
   } else if (type === 'newsletter-welcome') {
     subject = 'A little note from Ayurélle Organics';
     const subtitle = 'Thank you for joining our mailing list. We will share new arrivals, product updates and practical hair-care notes from time to time.';

@@ -3,7 +3,7 @@ import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { Resend } from 'resend';
-import { fallbackProducts, fallbackCategories } from './_catalogue.mjs';
+import { fallbackProducts, fallbackCategories, fallbackProductGuidance } from './_catalogue.mjs';
 import { emailTemplate } from './_email-templates.mjs';
 
 export const adminEmails = () => (process.env.ADMIN_EMAILS || process.env.ADMIN_NOTIFICATION_EMAIL || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
@@ -81,6 +81,8 @@ export async function loadServerCatalogue(db) {
   const [productSnap, categorySnap] = await Promise.all([db.collection('products').get(), db.collection('categories').get()]);
   const products = productSnap.docs.map(doc => {
     const product = { ...doc.data(), id: doc.id, slug: doc.data().slug || doc.id };
+    if (Number(product.contentReviewVersion || 0) < 3 && fallbackProductGuidance[product.slug]) Object.assign(product, fallbackProductGuidance[product.slug]);
+    if (['derma-roller', 'satin-bonnet', 'steaming-cap'].includes(product.slug)) product.ingredients = '';
     // These three items are sold in a single label-confirmed size. Ignore old
     // variant records so a previous configuration cannot block checkout.
     if (product.slug === 'ayur-hair-growth-oil') { delete product.variants; product.size = product.sizeDetail = '100 ml'; }
