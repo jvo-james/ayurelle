@@ -1,6 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, getIdToken, EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
-import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, deleteField, onSnapshot, serverTimestamp, writeBatch } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, getDoc, getDocs, getDocsFromCache, setDoc, updateDoc, deleteDoc, deleteField, serverTimestamp, writeBatch } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -17,6 +17,7 @@ const initialImage = product => {
   return images.products?.[product.slug] || images.categories?.[product.category] || 'images/ayurelle-mark.svg';
 };
 const normaliseOrder = (docSnap) => ({ ...docSnap.data(), id: docSnap.id, reference: docSnap.data().reference || docSnap.id });
+const displayOrderNumber = order => order?.orderNumber || order?.reference || order?.id || 'Pending';
 
 let app, auth, db, currentUser;
 let products = [], orders = [], categories = [], messages = [], subscribers = [];
@@ -24,9 +25,19 @@ let currentView = 'dashboard';
 let editingProductSlug = null, editingCategorySlug = null, activeOrder = null;
 let draftImages = [];
 let uploadCount = 0;
-const unsubscribers = [];
+let lastDataRefresh = 0;
+let lastFullDataRefresh = 0;
+let refreshInFlight = null;
 let toastTimer;
 let initialSnapshotKeys = new Set();
+const adminCacheKey = `ayurelle-admin-cache:${window.AYURELLE_FIREBASE_CONFIG?.projectId || 'store'}`;
+function recentAdminCacheTime() { try { const time = Number(localStorage.getItem(adminCacheKey) || 0); return Date.now() - time < 60_000 ? time : 0; } catch { return 0; } }
+function markAdminCacheFresh() { try { localStorage.setItem(adminCacheKey, String(Date.now())); } catch { /* Storage is optional. */ } }
+async function getAdminCollectionSnapshot(name, useCache = false) {
+  const query = collection(db, name);
+  if (useCache) { try { const snapshot = await getDocsFromCache(query); if (!snapshot.empty) return { snapshot, fromCache: true }; } catch { /* A cold cache falls through to the server. */ } }
+  return { snapshot: await getDocs(query), fromCache: false };
+}
 
 function setBusy(button, enabled, text = 'Working…') {
   if (!button) return;
@@ -98,7 +109,8 @@ async function checkAdmin(user) {
 async function startApp() {
   app = initializeApp(window.AYURELLE_FIREBASE_CONFIG);
   auth = getAuth(app);
-  db = getFirestore(app);
+  try { db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) }); }
+  catch { db = getFirestore(app); }
   onAuthStateChanged(auth, async user => {
     currentUser = user;
     if (!user) {
@@ -120,8 +132,8 @@ async function startApp() {
         return;
       }
       setShellVisible(true);
-      await seedCatalogueIfNeeded();
-      subscribeRealtimeData();
+      const initialData = await seedCatalogueIfNeeded();
+      await subscribeRealtimeData(undefined, { initialData });
       await loadStoreSettings();
       renderSetupChecklist();
     } catch (error) {
@@ -132,11 +144,14 @@ async function startApp() {
     }
   });
 }
-function closeRealtimeListeners() { unsubscribers.splice(0).forEach(unsubscribe => { try { unsubscribe(); } catch {} }); }
+function closeRealtimeListeners() { /* No live listeners are held open, which limits background reads. */ }
 
 async function seedCatalogueIfNeeded() {
-  const snapshot = await getDocs(collection(db, 'products'));
+  const warmCache = !!recentAdminCacheTime();
+  const productResult = await getAdminCollectionSnapshot('products', warmCache);
+  const snapshot = productResult.snapshot;
   let seededProducts = false;
+  let productRows = [];
   if (snapshot.empty) {
     const defaults = window.AYURELLE_CATALOGUE?.list || [];
     if (!defaults.length) throw new Error('The product catalogue could not be loaded. Please refresh and try again.');
@@ -146,15 +161,20 @@ async function seedCatalogueIfNeeded() {
       batch.set(doc(db, 'products', product.slug), {
         ...product, images: [], imageUrl: '', useRepositoryImages: true, imageVariants,
         stock: 0, lowStockThreshold: 5, trackInventory: false, active: true, sortOrder: index + 1,
-        createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+        contentReviewVersion: 3, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
       });
     });
     await batch.commit();
     seededProducts = true;
+    productRows = defaults.map((product, index) => ({
+      ...product, id: product.slug, images: [], imageUrl: '', useRepositoryImages: true,
+      imageVariants: window.AYURELLE_IMAGES?.variants?.[product.slug] || null,
+      stock: 0, lowStockThreshold: 5, trackInventory: false, active: true, sortOrder: index + 1, contentReviewVersion: 3
+    }));
   } else {
     const defaultsBySlug = new Map((window.AYURELLE_CATALOGUE?.list || []).map(item => [item.slug, item]));
     const batch = writeBatch(db); let edits = 0;
-    snapshot.docs.forEach(docSnap => {
+    productRows = snapshot.docs.map(docSnap => {
       const current = docSnap.data(); const slug = current.slug || docSnap.id; const updates = {};
       if (slug === 'ayur-hair-growth-oil') { updates.size = '100 ml'; updates.sizeDetail = '100 ml'; updates.variants = deleteField(); }
       if (slug === 'ayur-hair-growth-butter') { updates.size = '250 ml'; updates.sizeDetail = '250 ml'; updates.variants = deleteField(); }
@@ -164,47 +184,112 @@ async function seedCatalogueIfNeeded() {
       if (slug === 'ayur-hair-tea') { updates.size = '200 g'; updates.sizeDetail = '200 g botanical blend'; }
       if (slug === 'ayur-scalp-detox-mist') updates.name = 'Rosemary Water Spray';
       const fallback = defaultsBySlug.get(slug);
-      for (const field of ['short', 'description', 'directions', 'sizeDetail', 'scent', 'texture', 'caution']) {
+      if (Number(current.contentReviewVersion || 0) < 3 && fallback) {
+        if (fallback.directions) updates.directions = fallback.directions;
+        if (fallback.caution) updates.caution = fallback.caution;
+        updates.contentReviewVersion = 3;
+      }
+      if (['derma-roller', 'satin-bonnet', 'steaming-cap'].includes(slug)) updates.ingredients = '';
+      for (const field of ['short', 'description', 'sizeDetail', 'scent', 'texture']) {
         if (typeof current[field] === 'string' && /(draft|sample|placeholder|concept|to be confirmed|confirm.*before launch|owner-approved)/i.test(current[field]) && fallback?.[field]) updates[field] = fallback[field];
       }
       if (typeof current.ingredients === 'string' && /(draft example|sample formula|placeholder ingredient|to be confirmed)/i.test(current.ingredients)) updates.ingredients = '';
-      if (Object.keys(updates).length) { updates.updatedAt = serverTimestamp(); batch.update(doc(db, 'products', docSnap.id), updates); edits++; }
+      if (Object.keys(updates).length) { batch.update(doc(db, 'products', docSnap.id), { ...updates, updatedAt: serverTimestamp() }); edits++; }
+      const effectiveUpdates = { ...updates };
+      if (['ayur-hair-growth-oil', 'ayur-hair-growth-butter', 'ayur-silk-protein-mask'].includes(slug)) delete effectiveUpdates.variants;
+      const row = { ...current, ...effectiveUpdates, id: docSnap.id, slug };
+      if (['ayur-hair-growth-oil', 'ayur-hair-growth-butter', 'ayur-silk-protein-mask'].includes(slug)) delete row.variants;
+      if (['derma-roller', 'satin-bonnet', 'steaming-cap'].includes(slug)) row.ingredients = '';
+      return row;
     });
     if (edits) await batch.commit();
   }
-  // Seed categories independently. A store may already have products while its
-  // category collection is still empty or was cleared by an administrator.
   const fallbackCategories = Object.entries(window.AYURELLE_CATALOGUE?.categories || { sets: 'Complete Care Sets', hair: 'Hair Care Products', mens: "Men's Care", tools: 'Tools & Accessories' });
-  const categorySnapshot = await getDocs(collection(db, 'categories'));
+  const categoryResult = await getAdminCollectionSnapshot('categories', warmCache);
+  const categorySnapshot = categoryResult.snapshot;
+  let categoryRows;
   if (categorySnapshot.empty) {
     const categoryBatch = writeBatch(db);
     fallbackCategories.forEach(([slug, name], index) => categoryBatch.set(doc(db, 'categories', slug), { slug, name, active: true, sortOrder: index + 1, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
     await categoryBatch.commit();
+    categoryRows = fallbackCategories.map(([slug, name], index) => ({ id: slug, slug, name, active: true, sortOrder: index + 1 }));
+  } else {
+    categoryRows = categorySnapshot.docs.map(docSnap => ({ ...docSnap.data(), id: docSnap.id, slug: docSnap.data().slug || docSnap.id }));
   }
   if (seededProducts) toast('Your product catalogue is ready. Review prices and stock levels before taking orders.');
+  return { products: productRows, categories: categoryRows };
 }
-function subscribeRealtimeData() {
-  closeRealtimeListeners();
-  unsubscribers.push(onSnapshot(collection(db, 'products'), snap => {
-    products = snap.docs.map(d => ({ ...d.data(), id: d.id, slug: d.data().slug || d.id })).sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0) || String(a.name).localeCompare(String(b.name)));
-    renderAll(); markInitialSnapshot('products');
-  }, err => { console.warn('Products did not load:', err.message); markInitialSnapshot('products'); toast('Some product information could not be loaded. Check your connection and refresh.', 'error'); }) );
-  unsubscribers.push(onSnapshot(collection(db, 'orders'), snap => {
-    orders = snap.docs.map(normaliseOrder).sort((a, b) => (dateFrom(b.createdAt)?.getTime() || 0) - (dateFrom(a.createdAt)?.getTime() || 0));
-    renderAll(); markInitialSnapshot('orders');
-  }, err => { console.warn('Orders did not load:', err.message); markInitialSnapshot('orders'); toast('Orders could not be refreshed. Please check your connection and try again.', 'error'); }) );
-  unsubscribers.push(onSnapshot(collection(db, 'categories'), snap => {
-    categories = snap.docs.map(d => ({ ...d.data(), id: d.id, slug: d.data().slug || d.id })).sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0) || String(a.name).localeCompare(String(b.name)));
-    renderAll(); markInitialSnapshot('categories');
-  }, err => { console.warn('Categories did not load:', err.message); markInitialSnapshot('categories'); toast('Categories could not be refreshed. Please check your connection and try again.', 'error'); }) );
-  unsubscribers.push(onSnapshot(collection(db, 'contact_messages'), snap => {
-    messages = snap.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (dateFrom(b.createdAt)?.getTime() || 0) - (dateFrom(a.createdAt)?.getTime() || 0));
-    renderMessages(); renderNavCounts();
-  }, err => console.warn('Message sync:', err.message)));
-  unsubscribers.push(onSnapshot(collection(db, 'newsletter_subscribers'), snap => {
-    subscribers = snap.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (dateFrom(b.subscribedAt)?.getTime() || 0) - (dateFrom(a.subscribedAt)?.getTime() || 0));
-    renderSubscribers();
-  }, err => console.warn('Subscribers sync:', err.message)));
+async function migrateOrderNumbers(snapshot) {
+  const markerRef = doc(db, 'settings', 'order-number-migration');
+  const marker = await getDoc(markerRef);
+  if (marker.exists() && marker.data().complete === true) return new Map(snapshot.docs.map(orderDoc => [orderDoc.id, orderDoc.data().orderNumber || '']));
+  const sorted = [...snapshot.docs].sort((a, b) => {
+    const da = dateFrom(a.data().createdAt)?.getTime() || 0;
+    const db = dateFrom(b.data().createdAt)?.getTime() || 0;
+    if (da !== db) return da - db;
+    const sa = Number(a.data().orderSequence || 0), sb = Number(b.data().orderSequence || 0);
+    return sa !== sb ? sa - sb : a.id.localeCompare(b.id);
+  });
+  let batch = writeBatch(db), queued = 0;
+  const numbers = new Map();
+  for (let index = 0; index < sorted.length; index++) {
+    const snap = sorted[index];
+    const orderNumber = `AYR-${String(index + 1).padStart(5, '0')}`;
+    const data = snap.data();
+    numbers.set(snap.id, orderNumber);
+    if (data.orderNumber === orderNumber && Number(data.orderSequence) === index + 1) continue;
+    batch.update(doc(db, 'orders', snap.id), { orderNumber, orderSequence: index + 1 });
+    queued++;
+    if (queued >= 450) { await batch.commit(); batch = writeBatch(db); queued = 0; }
+  }
+  if (queued) await batch.commit();
+  await setDoc(markerRef, { complete: true, orderCount: sorted.length, completedAt: serverTimestamp() }, { merge: true });
+  return numbers;
+}
+
+async function subscribeRealtimeData(names = ['products', 'orders', 'categories', 'contact_messages', 'newsletter_subscribers'], options = {}) {
+  // One-shot reads replace live listeners. Explicit user refreshes can force a fresh read.
+  const fullRead = ['products', 'orders', 'categories', 'contact_messages', 'newsletter_subscribers'].every(name => names.includes(name));
+  if (fullRead && !options.force && !options.initialData && lastFullDataRefresh && Date.now() - lastFullDataRefresh < 60_000) { renderAll(); setLoading(false); return; }
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = (async () => {
+    const collections = {
+      products: 'products', orders: 'orders', categories: 'categories',
+      contact_messages: 'contact_messages', newsletter_subscribers: 'newsletter_subscribers'
+    };
+    const initialData = options.initialData || {};
+    const readNames = names.filter(name => !Object.prototype.hasOwnProperty.call(initialData, name));
+    const useWarmCache = fullRead && !options.force && !!recentAdminCacheTime();
+    let readFromCacheCount = 0;
+    const snapshots = await Promise.all(readNames.map(async name => {
+      const result = await getAdminCollectionSnapshot(collections[name], useWarmCache);
+      if (result.fromCache) readFromCacheCount++;
+      return [name, result.snapshot];
+    }));
+    for (const [name, snap] of snapshots) {
+      const needsNumberMigration = name === 'orders' && fullRead && snap.docs.some(orderDoc => !orderDoc.data().orderNumber || !Number(orderDoc.data().orderSequence));
+      const migratedOrderNumbers = needsNumberMigration ? await migrateOrderNumbers(snap) : null;
+      if (name === 'products') products = snap.docs.map(d => ({ ...d.data(), id: d.id, slug: d.data().slug || d.id })).sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0) || String(a.name).localeCompare(String(b.name)));
+      if (name === 'orders') orders = snap.docs.map(d => ({ ...normaliseOrder(d), orderNumber: d.data().orderNumber || migratedOrderNumbers?.get(d.id) || '', orderSequence: Number(d.data().orderSequence || String(migratedOrderNumbers?.get(d.id) || '').slice(4) || 0) })).sort((a, b) => (dateFrom(b.createdAt)?.getTime() || 0) - (dateFrom(a.createdAt)?.getTime() || 0));
+      if (name === 'categories') categories = snap.docs.map(d => ({ ...d.data(), id: d.id, slug: d.data().slug || d.id })).sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0) || String(a.name).localeCompare(String(b.name)));
+      if (name === 'contact_messages') messages = snap.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (dateFrom(b.createdAt)?.getTime() || 0) - (dateFrom(a.createdAt)?.getTime() || 0));
+      if (name === 'newsletter_subscribers') subscribers = snap.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (dateFrom(b.subscribedAt)?.getTime() || 0) - (dateFrom(a.subscribedAt)?.getTime() || 0));
+    }
+    lastDataRefresh = Date.now();
+    if (Object.prototype.hasOwnProperty.call(initialData, 'products')) products = initialData.products.sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0) || String(a.name).localeCompare(String(b.name)));
+    if (Object.prototype.hasOwnProperty.call(initialData, 'categories')) categories = initialData.categories.sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0) || String(a.name).localeCompare(String(b.name)));
+    if (fullRead) {
+      if (!useWarmCache || readFromCacheCount < readNames.length) {
+        markAdminCacheFresh();
+        lastFullDataRefresh = lastDataRefresh;
+      } else {
+        lastFullDataRefresh = recentAdminCacheTime() || lastFullDataRefresh;
+      }
+    }
+    renderAll();
+    setLoading(false);
+  })();
+  try { await refreshInFlight; } finally { refreshInFlight = null; }
 }
 
 function renderAll() {
@@ -214,7 +299,7 @@ function renderNavCounts() {
   $('[data-nav-products]').textContent = products.length;
   $('[data-nav-lowstock]').textContent = products.filter(p => p.trackInventory && Number(p.stock || 0) <= Number(p.lowStockThreshold ?? 5)).length;
   $('[data-nav-orders]').textContent = orders.filter(o => !['delivered', 'cancelled', 'refunded'].includes(String(o.status).toLowerCase())).length;
-  $('[data-nav-messages]').textContent = messages.filter(m => m.status !== 'read' && m.status !== 'closed').length;
+  $('[data-nav-messages]').textContent = messages.filter(m => !['read', 'closed', 'replied'].includes(String(m.status || '').toLowerCase())).length;
 }
 function paidOrdersWithin(days = 30) {
   const paid = orders.filter(order => order.paymentStatus === 'paid');
@@ -232,9 +317,11 @@ function paymentPill(order) {
 function fulfillmentPill(status) { return `<span class="admin-status-pill status-${statusClass(status)}"><i></i>${esc(status || 'pending')}</span>`; }
 function renderDashboard() {
   const paid = orders.filter(o => o.paymentStatus === 'paid');
-  const sales = paid.reduce((sum, order) => sum + Number(order.amountDue || 0), 0);
+  const sales = paid.reduce((sum, order) => sum + Number(order.subtotal || 0), 0);
+  const fees = paid.reduce((sum, order) => sum + Number(order.processingFee || 0), 0);
   const lowStock = lowStockProducts();
   $('[data-kpi-sales]').textContent = money(sales);
+  if ($('[data-kpi-processing-fees]')) $('[data-kpi-processing-fees]').textContent = money(fees);
   $('[data-kpi-orders]').textContent = String(orders.length);
   $('[data-kpi-orders-note]').textContent = `${orders.filter(o => !['delivered', 'cancelled', 'refunded'].includes(String(o.status).toLowerCase())).length} awaiting fulfilment`;
   $('[data-kpi-products]').textContent = String(products.length);
@@ -242,7 +329,7 @@ function renderDashboard() {
   $('[data-kpi-lowstock]').textContent = String(lowStock.length);
   const recent = $('[data-recent-orders]');
   const latest = orders.slice(0, 5);
-  recent.innerHTML = latest.length ? latest.map(order => `<button type="button" class="admin-recent-order" data-open-order="${esc(order.reference)}"><span class="admin-recent-order-mark"><i class="fa-solid fa-bag-shopping"></i></span><span class="admin-recent-order-copy"><strong>${esc(order.customer?.name || 'Customer')}</strong><small>${esc(order.reference)} · ${fmtDate(order.createdAt)}</small></span><span class="admin-recent-order-value"><strong>${money(order.amountDue)}</strong><small>${esc(order.status || 'pending')}</small></span></button>`).join('') : '<div class="admin-empty-inline">No orders yet. Confirmed orders will appear here.</div>';
+  recent.innerHTML = latest.length ? latest.map(order => `<button type="button" class="admin-recent-order" data-open-order="${esc(order.reference)}"><span class="admin-recent-order-mark"><i class="fa-solid fa-bag-shopping"></i></span><span class="admin-recent-order-copy"><strong>${esc(order.customer?.name || 'Customer')}</strong><small>${esc(displayOrderNumber(order))} · ${fmtDate(order.createdAt)}</small></span><span class="admin-recent-order-value"><strong>${money(order.subtotal)}</strong><small>${esc(order.status || 'pending')}</small></span></button>`).join('') : '<div class="admin-empty-inline">No orders yet. Confirmed orders will appear here.</div>';
   renderSalesChart($('[data-sales-chart]'), $('[data-chart-axis]'), Number($('[data-sales-period]').value || 30), $('[data-chart-total]'));
 }
 function salesBucketData(days) {
@@ -253,14 +340,14 @@ function salesBucketData(days) {
     for (let i = 11; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const end = new Date(d.getFullYear(), d.getMonth() + 1, 1);
-      const revenue = orders.filter(o => o.paymentStatus === 'paid').filter(o => { const dt = dateFrom(o.paidAt || o.createdAt); return dt && dt >= d && dt < end; }).reduce((sum, o) => sum + Number(o.amountDue || 0), 0);
+      const revenue = orders.filter(o => o.paymentStatus === 'paid').filter(o => { const dt = dateFrom(o.paidAt || o.createdAt); return dt && dt >= d && dt < end; }).reduce((sum, o) => sum + Number(o.subtotal || 0), 0);
       data.push({ label: d.toLocaleDateString('en-GH', { month: 'short' }), value: revenue });
     }
   } else {
     for (let i = max - 1; i >= 0; i--) {
       const d = new Date(now); d.setHours(0, 0, 0, 0); d.setDate(now.getDate() - i);
       const next = new Date(d); next.setDate(d.getDate() + 1);
-      const revenue = orders.filter(o => o.paymentStatus === 'paid').filter(o => { const dt = dateFrom(o.paidAt || o.createdAt); return dt && dt >= d && dt < next; }).reduce((sum, o) => sum + Number(o.amountDue || 0), 0);
+      const revenue = orders.filter(o => o.paymentStatus === 'paid').filter(o => { const dt = dateFrom(o.paidAt || o.createdAt); return dt && dt >= d && dt < next; }).reduce((sum, o) => sum + Number(o.subtotal || 0), 0);
       data.push({ label: max <= 7 ? d.toLocaleDateString('en-GH', { weekday: 'short' }) : d.toLocaleDateString('en-GH', { day: 'numeric', month: 'short' }), value: revenue });
     }
   }
@@ -337,10 +424,10 @@ function renderOrders() {
   const filter = $('[data-order-filter]')?.value || 'all';
   const payment = $('[data-payment-filter]')?.value || 'all';
   const results = orders.filter(order => {
-    const matchesText = !search || [order.reference, order.customer?.name, order.customer?.email, order.customer?.phone].join(' ').toLowerCase().includes(search);
+    const matchesText = !search || [displayOrderNumber(order), order.reference, order.customer?.name, order.customer?.email, order.customer?.phone].join(' ').toLowerCase().includes(search);
     return matchesText && (filter === 'all' || String(order.status || '').toLowerCase() === filter) && (payment === 'all' || String(order.paymentStatus || 'pending').toLowerCase() === payment);
   });
-  tbody.innerHTML = results.length ? results.map(order => `<tr class="admin-clickable-row" data-open-order="${esc(order.reference)}" tabindex="0" aria-label="Open order ${esc(order.reference)}"><td><button type="button" class="admin-order-ref" data-open-order="${esc(order.reference)}">${esc(order.reference)}</button><small class="admin-table-sub">${(order.items || []).reduce((sum,item) => sum + Number(item.qty || 0), 0)} units</small></td><td><div class="admin-customer-cell"><strong>${esc(order.customer?.name || 'Customer')}</strong><small>${esc(order.customer?.email || order.customer?.phone || 'No contact details')}</small></div></td><td>${fmtDate(order.createdAt)}</td><td><strong>${money(order.amountDue)}</strong></td><td>${paymentPill(order)}</td><td>${fulfillmentPill(order.status)}</td><td><button type="button" class="admin-row-action" data-open-order="${esc(order.reference)}" aria-label="View order ${esc(order.reference)}"><i class="fa-solid fa-arrow-up-right-from-square"></i></button></td></tr>`).join('') : '<tr><td colspan="7"><div class="admin-empty-table">No orders match your filters.</div></td></tr>';
+  tbody.innerHTML = results.length ? results.map(order => `<tr class="admin-clickable-row" data-open-order="${esc(order.reference)}" tabindex="0" aria-label="Open order ${esc(displayOrderNumber(order))}"><td><button type="button" class="admin-order-ref" data-open-order="${esc(order.reference)}">${esc(displayOrderNumber(order))}</button><small class="admin-table-sub">${(order.items || []).reduce((sum,item) => sum + Number(item.qty || 0), 0)} units</small></td><td><div class="admin-customer-cell"><strong>${esc(order.customer?.name || 'Customer')}</strong><small>${esc(order.customer?.email || order.customer?.phone || 'No contact details')}</small></div></td><td>${fmtDate(order.createdAt)}</td><td><strong>${money(order.subtotal)}</strong><small class="admin-table-sub">Subtotal</small></td><td>${paymentPill(order)}</td><td>${fulfillmentPill(order.status)}</td><td><button type="button" class="admin-row-action" data-open-order="${esc(order.reference)}" aria-label="View order ${esc(displayOrderNumber(order))}"><i class="fa-solid fa-arrow-up-right-from-square"></i></button></td></tr>`).join('') : '<tr><td colspan="7"><div class="admin-empty-table">No orders match your filters.</div></td></tr>';
   $('[data-orders-count]').textContent = `${results.length} orders`;
 }
 function renderCategories() {
@@ -354,9 +441,11 @@ function renderCategories() {
 function renderAnalytics() {
   const period = $('[data-analytics-period]')?.value || '30';
   const paid = paidOrdersWithin(period);
-  const revenue = paid.reduce((sum, order) => sum + Number(order.amountDue || 0), 0);
+  const revenue = paid.reduce((sum, order) => sum + Number(order.subtotal || 0), 0);
+  const processingFees = paid.reduce((sum, order) => sum + Number(order.processingFee || 0), 0);
   const units = paid.reduce((sum, order) => sum + (order.items || []).reduce((n,item) => n + Number(item.qty || 0), 0), 0);
   $('[data-analytics-revenue]').textContent = money(revenue);
+  if ($('[data-analytics-processing-fees]')) $('[data-analytics-processing-fees]').textContent = money(processingFees);
   $('[data-analytics-average]').textContent = money(paid.length ? revenue / paid.length : 0);
   $('[data-analytics-orders]').textContent = String(paid.length);
   $('[data-analytics-units]').textContent = String(units);
@@ -370,7 +459,41 @@ function renderAnalytics() {
 }
 function renderMessages() {
   const tbody = $('[data-messages-table]'); if (!tbody) return;
-  tbody.innerHTML = messages.length ? messages.map(message => `<tr><td>${fmtDateTime(message.createdAt)}</td><td><div class="admin-customer-cell"><strong>${esc(message.name)}</strong><small>${esc(message.email)}</small></div></td><td>${esc(message.topic)}</td><td><span class="admin-message-preview" title="${esc(message.message)}">${esc(message.message)}</span></td><td>${fulfillmentPill(message.status || 'new')}</td><td><div class="admin-inline-actions"><a class="admin-row-action" href="mailto:${encodeURIComponent(message.email || '')}?subject=${encodeURIComponent('Re: Ayurélle enquiry') }" aria-label="Reply to message"><i class="fa-solid fa-reply"></i></a><button class="admin-row-action" type="button" data-message-read="${esc(message.id)}" aria-label="Mark message read"><i class="fa-solid fa-check"></i></button></div></td></tr>`).join('') : '<tr><td colspan="6"><div class="admin-empty-table">No website enquiries yet.</div></td></tr>';
+  tbody.innerHTML = messages.length ? messages.map(message => `<tr><td>${fmtDateTime(message.createdAt)}</td><td><div class="admin-customer-cell"><strong>${esc(message.name)}</strong><small>${esc(message.email)}</small></div></td><td>${esc(message.topic)}</td><td><span class="admin-message-preview" title="${esc(message.message)}">${esc(message.message)}</span></td><td>${fulfillmentPill(message.status || 'new')}</td><td><div class="admin-inline-actions"><button class="admin-row-action" type="button" data-message-reply="${esc(message.id)}" aria-label="Reply by email"><i class="fa-solid fa-reply"></i></button><button class="admin-row-action" type="button" data-message-read="${esc(message.id)}" aria-label="Mark message read"><i class="fa-solid fa-check"></i></button></div></td></tr>`).join('') : '<tr><td colspan="6"><div class="admin-empty-table">No website enquiries yet.</div></td></tr>';
+}
+function fillMessageReply(messageId) {
+  const message = messages.find(item => item.id === messageId);
+  if (!message) return toast('This message is no longer in the inbox. Refresh and try again.', 'error');
+  const dialog = $('[data-message-reply-dialog]');
+  const form = $('[data-message-reply-form]');
+  form.reset();
+  form.elements.messageId.value = message.id;
+  form.elements.subject.value = `Re: ${String(message.topic || 'Your enquiry').replace(/^re:\s*/i, '')}`.slice(0, 140);
+  $('[data-reply-customer]').textContent = message.name || 'customer';
+  $('[data-reply-topic]').textContent = message.topic || 'Website enquiry';
+  $('[data-reply-original]').textContent = message.message || 'No message text was saved.';
+  setMessage('[data-message-reply-feedback]', '');
+  dialog.showModal();
+}
+async function sendMessageReply(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const button = form.querySelector('[type="submit"]');
+  const messageId = form.elements.messageId.value;
+  const subject = form.elements.subject.value.trim();
+  const message = form.elements.message.value.trim();
+  if (!messageId || !subject || message.length < 2) { setMessage('[data-message-reply-feedback]', 'Add an email subject and a reply before sending.', true); return; }
+  setBusy(button, true, 'Sending email…');
+  try {
+    const token = await currentUser.getIdToken();
+    const response = await fetch('/.netlify/functions/contact-reply', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ messageId, subject, message }) });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || 'The reply could not be sent. Please try again.');
+    $('[data-message-reply-dialog]').close();
+    await subscribeRealtimeData(['contact_messages']);
+    toast('Your reply email has been sent.');
+  } catch (error) { setMessage('[data-message-reply-feedback]', friendlyError(error, error.message || 'The reply could not be sent. Please try again.'), true); }
+  finally { setBusy(button, false); }
 }
 function renderSubscribers() {
   const tbody = $('[data-subscribers-table]'); if (!tbody) return;
@@ -433,6 +556,7 @@ function fillProductForm(product = null) {
   renderSetContentsPicker(product);
   updateSetPickerVisibility();
   updateRepositoryImageState();
+  updateProductPreview();
   setMessage('[data-product-form-feedback]', '');
   $('[data-product-dialog]').showModal();
 }
@@ -467,8 +591,24 @@ function updateRepositoryImageState() {
   text.textContent = useRepo ? note : note;
   if (useRepo) { draftImages = []; $('[data-product-form]').elements.images.value = ''; renderDraftImages(); }
 }
+function updateProductPreview() {
+  const form = $('[data-product-form]');
+  const image = $('[data-product-preview]');
+  const name = $('[data-product-preview-name]');
+  const detail = $('[data-product-preview-detail]');
+  if (!form || !image) return;
+  const slug = form.elements.slug.value || editingProductSlug || 'ayur-shampoo';
+  const fallback = initialImage({ slug, category: form.elements.category.value || 'hair' });
+  const custom = !form.elements.useRepositoryImages.checked ? (draftImages[0] || String(form.elements.images.value || '').split('\n').map(v => v.trim()).find(Boolean)) : '';
+  image.src = custom || fallback;
+  image.alt = `${form.elements.name.value.trim() || 'Product'} preview`;
+  if (name) name.textContent = form.elements.name.value.trim() || 'New product';
+  if (detail) detail.textContent = custom ? 'Custom image selected' : 'Using the original product photo';
+}
+
 function renderDraftImages() {
   const grid = $('[data-image-grid]'); if (!grid) return;
+  updateProductPreview();
   grid.innerHTML = draftImages.length ? draftImages.map((url,index) => `<figure class="admin-image-preview"><img src="${esc(url)}" alt="Uploaded product view ${index+1}" loading="lazy"><span>Image ${index+1}${index === 0 ? ' · Cover' : ''}</span><button type="button" data-remove-image="${index}" aria-label="Remove image ${index+1}"><i class="fa-solid fa-xmark"></i></button></figure>`).join('') : '<div class="admin-image-empty"><i class="fa-regular fa-images"></i><span>No custom images selected. Repository imagery will be used if enabled.</span></div>';
   $('[data-product-form]').elements.images.value = draftImages.join('\n');
 }
@@ -550,12 +690,12 @@ function saveProduct(event) {
         stock: Math.max(0, Number(form.elements.stock.value) || 0), lowStockThreshold: Math.max(0, Number(form.elements.lowStockThreshold.value) || 0),
         active: form.elements.active.value === 'true', trackInventory: form.elements.trackInventory.checked,
         short: form.elements.short.value.trim(), description: form.elements.description.value.trim(),
-        ingredients: form.elements.ingredients.value.trim(), directions: form.elements.directions.value.trim(),
+        ingredients: ['derma-roller', 'satin-bonnet', 'steaming-cap'].includes(slugify(form.elements.slug.value)) ? '' : form.elements.ingredients.value.trim(), directions: form.elements.directions.value.trim(),
         sizeDetail: form.elements.sizeDetail.value.trim(), texture: form.elements.texture.value.trim(), scent: form.elements.scent.value.trim(), badge: form.elements.badge.value.trim(), caution: form.elements.caution.value.trim(),
         highlights: form.elements.highlights.value.split('\n').map(v => v.trim()).filter(Boolean),
         contains: form.elements.contains.value.split('\n').map(v => v.trim()).filter(Boolean).map(value => ({ slug: value })),
         variants, imageVariants, images, imageUrl: images[0] || '', useRepositoryImages,
-        updatedAt: serverTimestamp()
+        contentReviewVersion: 3, updatedAt: serverTimestamp()
       };
       if (!product.name || !product.short || !product.description || !Number.isFinite(product.price) || product.price < 0) throw new Error('Please complete the required name, description and price fields.');
       if (slug !== editingProductSlug && products.some(p => p.slug === slug)) throw new Error('That product slug already exists. Choose a unique slug.');
@@ -565,7 +705,7 @@ function saveProduct(event) {
         if (!editingProductSlug) product.createdAt = serverTimestamp();
         await setDoc(doc(db, 'products', slug), product, { merge: true });
       }
-      $('[data-product-dialog]').close(); toast(`${product.name} saved. The storefront will pick up the changes.`);
+      $('[data-product-dialog]').close(); await subscribeRealtimeData(['products']); toast(`${product.name} saved. The storefront will pick up the changes.`);
     } catch (error) { setMessage('[data-product-form-feedback]', friendlyError(error, 'We could not save this product. Please check your connection and try again.'), true); }
     finally { setBusy(button, false); }
   })();
@@ -575,14 +715,14 @@ async function deleteProduct() {
   const existing = products.find(p => p.slug === editingProductSlug);
   if (!confirm(`Delete “${existing?.name || editingProductSlug}” permanently? This cannot be undone.`)) return;
   const button = $('[data-delete-product]'); setBusy(button, true, 'Deleting…');
-  try { await deleteDoc(doc(db, 'products', editingProductSlug)); $('[data-product-dialog]').close(); toast('Product deleted from the catalogue.'); }
+  try { await deleteDoc(doc(db, 'products', editingProductSlug)); $('[data-product-dialog]').close(); await subscribeRealtimeData(['products']); toast('Product deleted from the catalogue.'); }
   catch (error) { setMessage('[data-product-form-feedback]', friendlyError(error, 'We could not delete this product. Please try again.'), true); }
   finally { setBusy(button, false); }
 }
-function fillOrderDialog(reference) {
+function fillOrderDialog(reference, openDialog = true) {
   activeOrder = orders.find(order => order.reference === reference);
   if (!activeOrder) return;
-  $('[data-order-dialog-ref]').textContent = activeOrder.reference;
+  $('[data-order-dialog-ref]').textContent = displayOrderNumber(activeOrder);
   $('[data-order-dialog-subtitle]').textContent = `${activeOrder.customer?.name || 'Customer'} · Placed ${fmtDateTime(activeOrder.createdAt)}`;
   const order = activeOrder;
   const delivery = order.delivery || {};
@@ -593,7 +733,7 @@ function fillOrderDialog(reference) {
   $('[data-order-dialog-body]').innerHTML = `<div class="admin-order-dialog-status"><div>${paymentPill(order)}<small>${esc(order.paymentProvider || 'Secure online payment')}</small></div><div>${fulfillmentPill(order.status)}<small>Current order status</small></div></div><div class="admin-order-info-grid"><div><span>Customer</span><strong>${esc(order.customer?.name || 'Customer')}</strong><a href="mailto:${encodeURIComponent(order.customer?.email || '')}">${esc(order.customer?.email || 'No email provided')}</a><a href="tel:${esc(order.customer?.phone || '')}">${esc(order.customer?.phone || 'No phone provided')}</a></div><div><span>${pickup ? 'Pickup details' : 'Delivery details'}</span><strong>${esc(pickup ? 'Pickup · Ville Afrique' : 'Home delivery')}</strong><small><b>Scheduled for:</b> ${esc(scheduledLabel)}</small><small><b>${pickup ? 'Pickup address' : 'Address'}:</b> ${esc(address || 'To be confirmed')}</small>${pickup ? `<small>${esc(delivery.pickupInstructions || 'Please wait for our confirmation before travelling to collect your order.')}</small>` : `<small>${esc(delivery.deliveryNote || 'Delivery charges are confirmed separately after the location is reviewed.')}</small>`}${delivery.notes ? `<small>Order note: ${esc(delivery.notes)}</small>` : ''}</div></div><div class="admin-order-lines"><div class="admin-order-section-heading"><div><span>ORDER CONTENTS</span><h3>Items in this order</h3></div><small>${(order.items || []).reduce((sum,item) => sum + Number(item.qty || 0), 0)} item(s)</small></div>${(order.items || []).map(item => `<div class="admin-order-line"><img class="admin-order-item-image" src="${esc(item.image || initialImage({ slug: item.slug, category: item.category }))}" alt="${esc(item.name)}" loading="lazy"><span><strong>${esc(item.name)}</strong><small>${esc([item.size, item.colorLabel || item.color].filter(Boolean).join(' · '))} · Qty ${Number(item.qty || 1)}</small></span><b>${money(item.lineTotal ?? Number(item.price) * Number(item.qty))}</b></div>`).join('')}</div><div class="admin-order-totals"><div><span>Subtotal</span><strong>${money(order.subtotal)}</strong></div><div><span>Processing fee</span><strong>${money(order.processingFee)}</strong></div><div class="admin-order-paid-total"><span>Paid today</span><strong>${money(order.amountDue)}</strong></div><small>${pickup ? 'Pickup is arranged for the date above. The team will confirm before collection.' : 'Delivery fee is not included in the payment. Confirm it separately with the customer.'}</small></div>`;
   $('[data-order-status-select]').value = order.status || 'processing';
   setMessage('[data-order-update-feedback]', '');
-  $('[data-order-dialog]').showModal();
+  if (openDialog) $('[data-order-dialog]').showModal();
 }
 async function saveOrderStatus() {
   if (!activeOrder) return;
@@ -605,6 +745,9 @@ async function saveOrderStatus() {
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || 'Could not update order status.');
     setMessage('[data-order-update-feedback]', data.message || 'Order status updated.');
+    await subscribeRealtimeData(['orders']);
+    activeOrder = orders.find(order => order.reference === activeOrder?.reference) || activeOrder;
+    if (activeOrder) { $('[data-order-status-select]').value = activeOrder.status || status; fillOrderDialog(activeOrder.reference, false); }
     toast(data.message || 'Order updated.');
   } catch (error) { setMessage('[data-order-update-feedback]', friendlyError(error, 'We could not update this order right now. Please try again.'), true); }
   finally { setBusy(button, false); }
@@ -617,7 +760,7 @@ async function createCategory(event) {
     if (!name || !slug) throw new Error('Enter a category name and URL slug.');
     if (categories.some(c => c.slug === slug)) throw new Error('That category slug already exists.');
     await setDoc(doc(db, 'categories', slug), { slug, name, active: true, sortOrder: categories.length + 1, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-    form.reset(); toast('Category created.');
+    form.reset(); await subscribeRealtimeData(['categories']); toast('Category created.');
   } catch (error) { toast(error.message, 'error'); }
   finally { setBusy(button, false); }
 }
@@ -638,7 +781,7 @@ async function saveCategory(event) {
       const batch = writeBatch(db); batch.set(doc(db, 'categories', slug), { ...updates, sortOrder: categories.find(c => c.slug === oldSlug)?.sortOrder || categories.length + 1, createdAt: serverTimestamp() }); batch.delete(doc(db, 'categories', oldSlug));
       products.filter(p => p.category === oldSlug).forEach(p => batch.update(doc(db, 'products', p.slug), { category: slug, updatedAt: serverTimestamp() })); await batch.commit();
     } else await updateDoc(doc(db, 'categories', oldSlug), updates);
-    $('[data-category-dialog]').close(); toast('Category saved.');
+    $('[data-category-dialog]').close(); await subscribeRealtimeData(slug !== oldSlug ? ['categories', 'products'] : ['categories']); toast('Category saved.');
   } catch (error) { setMessage('[data-category-edit-feedback]', error.message, true); }
   finally { setBusy(button, false); }
 }
@@ -654,7 +797,7 @@ async function deleteCategory() {
     const batch = writeBatch(db);
     if (destination) products.filter(p => p.category === editingCategorySlug).forEach(p => batch.update(doc(db, 'products', p.slug), { category: destination.slug, updatedAt: serverTimestamp() }));
     batch.delete(doc(db, 'categories', editingCategorySlug)); await batch.commit();
-    $('[data-category-dialog]').close(); toast('Category removed.');
+    $('[data-category-dialog]').close(); await subscribeRealtimeData(['categories', 'products']); toast('Category removed.');
   } catch (error) { setMessage('[data-category-edit-feedback]', error.message, true); }
   finally { setBusy(button, false); }
 }
@@ -663,13 +806,20 @@ async function loadStoreSettings() {
     const snap = await getDoc(doc(db, 'settings', 'store'));
     if (!snap.exists()) return;
     const data = snap.data(); const form = $('[data-settings-form]');
-    Object.keys(data).forEach(key => { if (form.elements[key]) form.elements[key].value = data[key] ?? ''; });
+    Object.keys(data).forEach(key => {
+      const picker = form.querySelector(`[data-day-picker="${key}"]`);
+      if (picker) { const selected = new Set(String(data[key] || '').split(/[;,\n]/).map(v => v.trim()).filter(Boolean)); picker.querySelectorAll('input[type=checkbox]').forEach(input => { input.checked = selected.has(input.value); }); return; }
+      if (form.elements[key] && !form.elements[key].multiple) form.elements[key].value = data[key] ?? '';
+    });
   } catch (error) { console.warn('Store settings could not be loaded:', error.message); }
 }
 async function saveSettings(event) {
   event.preventDefault(); const form = event.currentTarget; const button = form.querySelector('[type="submit"]'); setBusy(button, true, 'Saving settings…');
   try {
-    const payload = Object.fromEntries(new FormData(form).entries()); payload.updatedAt = serverTimestamp(); payload.updatedBy = currentUser.email || currentUser.uid;
+    const payload = Object.fromEntries(new FormData(form).entries());
+    for (const key of ['deliveryDays', 'pickupDays']) { const picker = form.querySelector(`[data-day-picker="${key}"]`); const selected = [...picker.querySelectorAll('input[type=checkbox]:checked')].map(input => input.value); if (!selected.length) throw new Error(`Choose at least one ${key === 'deliveryDays' ? 'delivery' : 'pickup'} day.`); payload[key] = selected.join(', '); }
+    delete payload.deliveryDayChoice; delete payload.pickupDayChoice;
+    payload.updatedAt = serverTimestamp(); payload.updatedBy = currentUser.email || currentUser.uid;
     await setDoc(doc(db, 'settings', 'store'), payload, { merge: true }); setMessage('[data-settings-feedback]', 'Store preferences saved.'); toast('Store settings saved.');
   } catch (error) { setMessage('[data-settings-feedback]', friendlyError(error, 'We could not save your store settings. Please try again.'), true); }
   finally { setBusy(button, false); }
@@ -709,8 +859,8 @@ function downloadCSV(filename, rows) {
   const anchor = document.createElement('a'); anchor.href = url; anchor.download = filename; document.body.appendChild(anchor); anchor.click(); anchor.remove(); URL.revokeObjectURL(url);
 }
 function exportOrders() {
-  const rows = [['Reference','Created','Customer','Email','Phone','Subtotal','Processing fee','Paid total','Payment status','Order status','Region','City','Address','Items']];
-  orders.forEach(o => rows.push([o.reference, fmtDateTime(o.createdAt), o.customer?.name, o.customer?.email, o.customer?.phone, o.subtotal, o.processingFee, o.amountDue, o.paymentStatus, o.status, o.delivery?.region, o.delivery?.city, o.delivery?.address, (o.items || []).map(i => `${i.name} x ${i.qty}`).join('; ')]));
+  const rows = [['Order number','Payment reference','Created','Customer','Email','Phone','Subtotal','Processing fee','Paid total','Payment status','Order status','Region','City','Address','Items']];
+  orders.forEach(o => rows.push([displayOrderNumber(o), o.reference, fmtDateTime(o.createdAt), o.customer?.name, o.customer?.email, o.customer?.phone, o.subtotal, o.processingFee, o.amountDue, o.paymentStatus, o.status, o.delivery?.region, o.delivery?.city, o.delivery?.address, (o.items || []).map(i => `${i.name} x ${i.qty}`).join('; ')]));
   downloadCSV('ayurelle-orders.csv', rows);
 }
 function exportInventory() {
@@ -732,7 +882,7 @@ function bindEvents() {
     finally { setBusy(button, false); }
   });
   $('[data-logout]').addEventListener('click', async () => { closeRealtimeListeners(); await signOut(auth); toast('You have signed out.'); });
-  $('[data-refresh]').addEventListener('click', () => renderAll());
+  $('[data-refresh]').addEventListener('click', async event => { const button = event.currentTarget; button.classList.add('is-loading'); try { await subscribeRealtimeData(undefined, { force: true }); await loadStoreSettings(); toast('Store information refreshed.'); } catch { toast('Refresh failed. Check your connection and try again.', 'error'); } finally { button.classList.remove('is-loading'); } });
   $$('[data-view]').forEach(button => button.addEventListener('click', () => setView(button.dataset.view)));
   $$('[data-new-product]').forEach(button => button.addEventListener('click', () => fillProductForm()));
   $$('[data-go-inventory]').forEach(button => button.addEventListener('click', () => setView('inventory')));
@@ -741,6 +891,8 @@ function bindEvents() {
   $$('[data-go-settings]').forEach(button => button.addEventListener('click', () => setView('settings')));
   $$('[data-close-product]').forEach(button => button.addEventListener('click', () => $('[data-product-dialog]').close()));
   $$('[data-close-order]').forEach(button => button.addEventListener('click', () => $('[data-order-dialog]').close()));
+  $$('[data-close-message-reply]').forEach(button => button.addEventListener('click', () => $('[data-message-reply-dialog]').close()));
+  $('[data-message-reply-form]').addEventListener('submit', sendMessageReply);
   $$('[data-close-category]').forEach(button => button.addEventListener('click', () => $('[data-category-dialog]').close()));
   $('[data-product-form]').addEventListener('submit', saveProduct);
   $('[data-delete-product]').addEventListener('click', deleteProduct);
@@ -764,7 +916,7 @@ function bindEvents() {
   $('[data-export-subscribers]').addEventListener('click', exportSubscribers);
   $('[data-admin-menu]').addEventListener('click', () => { const sidebar = $('[data-admin-sidebar]'); const open = !sidebar.classList.contains('is-open'); sidebar.classList.toggle('is-open', open); document.body.classList.toggle('admin-nav-open', open); $('[data-admin-menu]').setAttribute('aria-expanded', String(open)); });
   $$('[data-admin-view] button[data-view]').forEach(button => button.addEventListener('click', () => setView(button.dataset.view)));
-  $('[data-product-form]').elements.name.addEventListener('input', event => { if (!editingProductSlug) $('[data-product-form]').elements.slug.value = slugify(event.target.value); });
+  $('[data-product-form]').elements.name.addEventListener('input', event => { if (!editingProductSlug) $('[data-product-form]').elements.slug.value = slugify(event.target.value); updateProductPreview(); });
   $('[data-editor-category]').addEventListener('change', () => { updateSetPickerVisibility(); renderSetContentsPicker(); });
   $('[data-product-form]').elements.useRepositoryImages.addEventListener('change', updateRepositoryImageState);
   $('[data-product-form]').elements.images.addEventListener('input', event => { draftImages = event.target.value.split('\n').map(v => v.trim()).filter(Boolean); renderDraftImages(); });
@@ -801,29 +953,30 @@ function bindEvents() {
     const edit = event.target.closest('[data-edit-product]'); if (edit) { if (edit.matches('tr') && event.target.closest('button,input,select,textarea,a')) return; fillProductForm(products.find(p => p.slug === edit.dataset.editProduct)); return; }
     const openOrder = event.target.closest('[data-open-order]'); if (openOrder) { fillOrderDialog(openOrder.dataset.openOrder); return; }
     const editCategory = event.target.closest('[data-edit-category]'); if (editCategory) { fillCategoryDialog(editCategory.dataset.editCategory); return; }
+    const replyMessage = event.target.closest('[data-message-reply]'); if (replyMessage) { fillMessageReply(replyMessage.dataset.messageReply); return; }
     const removeImage = event.target.closest('[data-remove-image]'); if (removeImage) { draftImages.splice(Number(removeImage.dataset.removeImage),1); $('[data-use-repo-images]').checked = draftImages.length === 0; renderDraftImages(); updateRepositoryImageState(); return; }
-    const toggleSubscriber = event.target.closest('[data-toggle-subscriber]'); if (toggleSubscriber) { updateDoc(doc(db,'newsletter_subscribers',toggleSubscriber.dataset.toggleSubscriber), { status: toggleSubscriber.dataset.nextStatus, updatedAt: serverTimestamp() }).then(() => toast('Subscription status updated.')).catch(error => toast(error.message,'error')); return; }
-    const readMessage = event.target.closest('[data-message-read]'); if (readMessage) { updateDoc(doc(db,'contact_messages',readMessage.dataset.messageRead), { status: 'read', readAt: serverTimestamp() }).then(() => toast('Message marked as read.')).catch(error => toast(error.message,'error')); }
+    const toggleSubscriber = event.target.closest('[data-toggle-subscriber]'); if (toggleSubscriber) { updateDoc(doc(db,'newsletter_subscribers',toggleSubscriber.dataset.toggleSubscriber), { status: toggleSubscriber.dataset.nextStatus, updatedAt: serverTimestamp() }).then(async () => { await subscribeRealtimeData(['newsletter_subscribers']); toast('Subscription status updated.'); }).catch(error => toast(error.message,'error')); return; }
+    const readMessage = event.target.closest('[data-message-read]'); if (readMessage) { updateDoc(doc(db,'contact_messages',readMessage.dataset.messageRead), { status: 'read', readAt: serverTimestamp() }).then(async () => { await subscribeRealtimeData(['contact_messages']); toast('Message marked as read.'); }).catch(error => toast(error.message,'error')); }
   });
   document.addEventListener('change', async event => {
     const track = event.target.closest('[data-stock-track]');
     if (track) {
       const product = products.find(p => p.slug === track.dataset.stockTrack); if (!product) return;
-      try { await updateDoc(doc(db,'products',product.slug), { trackInventory: track.checked, updatedAt: serverTimestamp() }); toast(`${product.name}: inventory tracking ${track.checked ? 'enabled' : 'disabled'}.`); }
+      try { await updateDoc(doc(db,'products',product.slug), { trackInventory: track.checked, updatedAt: serverTimestamp() }); await subscribeRealtimeData(['products']); toast(`${product.name}: inventory tracking ${track.checked ? 'enabled' : 'disabled'}.`); }
       catch (error) { toast(error.message,'error'); }
       return;
     }
     const stock = event.target.closest('[data-stock-value]');
     if (stock) {
       const slug = stock.dataset.stockValue; const value = Math.max(0, Math.floor(Number(stock.value) || 0)); stock.disabled = true;
-      try { await updateDoc(doc(db,'products',slug), { stock: value, updatedAt: serverTimestamp() }); toast('Stock quantity updated.'); }
+      try { await updateDoc(doc(db,'products',slug), { stock: value, updatedAt: serverTimestamp() }); await subscribeRealtimeData(['products']); toast('Stock quantity updated.'); }
       catch (error) { toast(error.message,'error'); stock.disabled = false; }
       return;
     }
     const threshold = event.target.closest('[data-stock-threshold]');
     if (threshold) {
       const slug = threshold.dataset.stockThreshold; const value = Math.max(0, Math.floor(Number(threshold.value) || 0)); threshold.disabled = true;
-      try { await updateDoc(doc(db,'products',slug), { lowStockThreshold: value, updatedAt: serverTimestamp() }); toast('Low-stock alert saved.'); }
+      try { await updateDoc(doc(db,'products',slug), { lowStockThreshold: value, updatedAt: serverTimestamp() }); await subscribeRealtimeData(['products']); toast('Low-stock alert saved.'); }
       catch (error) { toast(error.message,'error'); threshold.disabled = false; }
     }
   });
@@ -848,6 +1001,7 @@ function friendlyAuthError(error) {
 }
 
 bindEvents();
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && currentUser && Date.now() - lastFullDataRefresh > 5 * 60 * 1000) subscribeRealtimeData().catch(() => toast('Some store information could not be refreshed. Try the refresh button.', 'error')); });
 if (!configReady()) {
   setLoading(false);
   setMessage('[data-login-message]', 'Sign-in is not ready yet. Please contact the person who set up your store.', true);

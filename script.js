@@ -18,11 +18,11 @@
       short: 'A complete collection for cleansing, conditioning, moisture and scalp care.',
       description: 'The Full Hair Growth Set brings nine Ayurélle essentials together in one coordinated collection. It includes wash-day staples, a protein mask, oil, butter, herbal hair tea and a scalp mist, giving you a practical starting point for a consistent hair-care routine.',
       ingredients: '',
-      directions: 'Use each included product according to its own verified label. Follow the shampoo with the conditioner or treatment best suited to your routine. Use leave-in products and styling moisturisers as directed. Introduce new products one at a time if you prefer to observe how your hair responds.',
+      directions: "Use each item in the set according to its own product directions. On wash day, cleanse first, then choose the conditioner or treatment best suited to your routine. Apply leave-in products and styling moisturisers in small amounts as directed.",
       sizeDetail: 'A coordinated nine-piece routine with full-size essentials.',
       texture: 'Cleansing, conditioning and leave-in essentials', scent: 'Product scent varies by item in the set',
       highlights: ['Nine coordinated hair-care essentials', 'Includes cleansing and conditioning steps', 'Oil and butter for moisture-focused styling', 'Includes hair tea and scalp mist'],
-      caution: 'Follow the directions supplied with each item. Discontinue use of any product if irritation occurs.',
+      caution: "Read the directions and cautions for every item in the set. For external use only unless a product label clearly states otherwise. Avoid eye contact and stop using any item that causes irritation.",
       contains: [
         { slug: 'ayur-shampoo' }, { slug: 'ayur-deep-conditioner' }, { slug: 'ayur-rinse-out-conditioner' },
         { slug: 'ayur-leave-in-conditioner' }, { slug: 'ayur-silk-protein-mask' }, { slug: 'ayur-hair-growth-oil' },
@@ -34,11 +34,11 @@
       short: 'Six core products for a more complete wash-day and between-wash routine.',
       description: 'The Deluxe Set pairs six everyday essentials across cleansing, conditioning and moisture. It is a balanced collection for customers who want a few more care steps together without choosing each product separately.',
       ingredients: '',
-      directions: 'Follow the directions printed on each individual product. Begin with shampoo then select either the deep conditioner or a regular conditioning step to suit your routine. Apply leave-in products, oil and butter as indicated on their final labels.',
+      directions: "Use each item according to its own product directions. Cleanse first, then use the deep conditioner or other conditioning step as directed. Finish with leave-in products in small amounts, following each label.",
       sizeDetail: 'A six-piece collection for a complete routine.',
       texture: 'Cleansing, conditioning and moisturising essentials', scent: 'Product scent varies by item in the set',
       highlights: ['Six products for a layered routine', 'Includes a deep conditioning step', 'Includes oil and butter for styling', 'Hair tea completes the collection'],
-      caution: 'Follow the directions supplied with each item. Discontinue use of any product if irritation occurs.',
+      caution: "Read the directions and cautions for every item in the set. Avoid eye contact and stop using any item that causes irritation.",
       contains: [
         { slug: 'ayur-shampoo' }, { slug: 'ayur-deep-conditioner' }, { slug: 'ayur-leave-in-conditioner' },
         { slug: 'ayur-hair-growth-oil' }, { slug: 'ayur-hair-growth-butter' }, { slug: 'ayur-hair-tea' }
@@ -49,11 +49,11 @@
       short: 'A practical introduction to cleansing, conditioning and everyday moisture.',
       description: 'The Starter Set brings six essentials together for customers building a straightforward hair-care routine. It includes shampoo, rinse-out conditioner, leave-in conditioner, oil, butter and a hair mist for a practical collection of wash-day and styling staples.',
       ingredients: '',
-      directions: 'Use each item in line with its final packaging directions. Start with cleansing and conditioning, then apply leave-in products and moisturisers as directed. The set includes Rosemary Water Spray for a refreshing step between wash days.',
+      directions: "Use each item according to its own product directions. Start with shampoo and rinse-out conditioner, then use leave-in products in small amounts. Follow the instructions printed on the individual labels.",
       sizeDetail: 'A six-piece collection for a complete routine.',
       texture: 'Cleansing, conditioning and lightweight leave-in essentials', scent: 'Product scent varies by item in the set',
       highlights: ['Six core care products', 'Includes rinse-out and leave-in conditioner', 'Oil and butter for styling support', 'Includes a mist for use between wash days'],
-      caution: 'Follow the directions supplied with each item. Discontinue use of any product if irritation occurs.',
+      caution: "Read the directions and cautions for every item in the set. Avoid eye contact and stop using any item that causes irritation.",
       contains: [
         { slug: 'ayur-shampoo' }, { slug: 'ayur-rinse-out-conditioner' }, { slug: 'ayur-leave-in-conditioner' },
         { slug: 'ayur-hair-growth-oil' }, { slug: 'ayur-hair-growth-butter' }, { slug: 'ayur-scalp-detox-mist', label: 'Rosemary Water Spray' }
@@ -64,144 +64,144 @@
       short: 'A cleansing shampoo for a fresh-feeling scalp and clean, manageable hair.',
       description: 'A refreshing wash-day cleanser that helps remove everyday buildup and leaves hair feeling clean and ready for conditioning.',
       ingredients: '',
-      directions: 'Wet hair thoroughly. Apply a small amount to the scalp and massage gently with fingertips. Rinse well and repeat if needed according to the final product label. Follow with a conditioner suited to your hair.',
+      directions: "Wet hair and scalp thoroughly. Apply a small amount and massage gently with fingertips, without scratching. Rinse completely and repeat only if needed. Follow with a rinse-out conditioner.",
       sizeDetail: '250 ml', texture: 'Liquid cleanser', scent: 'As labelled',
       highlights: ['A wash-day cleansing step', 'A liquid texture that spreads easily', 'Pairs with conditioner after washing'],
-      caution: 'Avoid contact with eyes. Rinse well if contact occurs.'
+      caution: "For external use only. Avoid contact with eyes. Rinse thoroughly with clean water if contact occurs. Stop use if irritation develops.",
     },
     {
       slug: 'ayur-deep-conditioner', name: 'Ayur Deep Conditioner', category: 'hair', price: 65, size: '250 ml', badge: '',
       short: 'A richer conditioning treatment for soft feel and easier detangling.',
       description: 'A rich rinse-off treatment for wash days when hair needs an extra conditioning step. Work it through the lengths and ends for a softer, more manageable feel.',
       ingredients: '',
-      directions: 'After shampooing, distribute through clean damp hair, concentrating on lengths and ends. Detangle gently and leave on for the time stated on the final label. Rinse thoroughly.',
+      directions: "After shampooing, apply to clean, damp hair, concentrating on the lengths and ends. Leave on only for the duration stated on the product label, then rinse thoroughly.",
       sizeDetail: '250 ml', texture: 'Rich conditioning cream', scent: 'As labelled',
       highlights: ['Richer texture for a treatment step', 'Designed to support slip and manageability', 'Useful alongside a gentle detangling technique'],
-      caution: 'For external use only. Avoid contact with eyes and rinse thoroughly.'
+      caution: "For external use only. Avoid contact with eyes. Rinse thoroughly if contact occurs and stop use if irritation develops.",
     },
     {
       slug: 'ayur-rinse-out-conditioner', name: 'Ayur Rinse-Out Conditioner', category: 'hair', price: 60, size: '250 ml', badge: '',
       short: 'A daily conditioning step for softer-feeling strands and easier detangling.',
       description: 'A creamy rinse-out conditioner for the step after cleansing, helping hair feel softer and easier to detangle.',
       ingredients: '',
-      directions: 'After shampooing, smooth through damp hair, focusing on the lengths and ends. Gently work through tangles with fingers or a wide-tooth comb, then rinse thoroughly.',
+      directions: "After shampooing, smooth through damp hair, concentrating on the lengths and ends. Detangle gently with fingers or a wide-tooth comb, then rinse thoroughly.",
       sizeDetail: '250 ml', texture: 'Creamy rinse-out conditioner', scent: 'As labelled',
       highlights: ['A simple follow-up to shampoo', 'Designed to support detangling and softness', 'Rinses out after use'],
-      caution: 'Avoid contact with eyes. Do not leave in unless the final label specifically instructs you to do so.'
+      caution: "For external use only. Avoid contact with eyes. This is a rinse-out product, so do not leave it in the hair unless the final label expressly says to do so.",
     },
     {
       slug: 'ayur-leave-in-conditioner', name: 'Ayur Leave-In Conditioner', category: 'hair', price: 55, size: '250 ml', badge: '',
       short: 'Lightweight leave-in conditioning for smoother-feeling hair between wash days.',
       description: 'A leave-in conditioner for the styling step after washing. Apply a small amount through clean, damp lengths and ends, then style as usual.',
       ingredients: '',
-      directions: 'Apply a small amount to clean damp hair. Spread evenly through lengths and ends, adding only what is needed for your texture. Do not rinse out. Keep away from the scalp if the final formula is designed for lengths only.',
+      directions: "Apply a small amount to clean, damp hair. Smooth evenly through the lengths and ends, adding more only if needed. Do not rinse out. Follow any additional directions on the product label.",
       sizeDetail: '250 ml', texture: 'Light conditioning cream', scent: 'As labelled',
       highlights: ['Leave-in step for styling and upkeep', 'Use a small amount and distribute evenly', 'Can sit alongside rinse-out conditioning'],
-      caution: 'Not interchangeable with a rinse-out conditioner. Do not rinse out unless the product label instructs you to.'
+      caution: "For external use only. Avoid contact with eyes. Start with a small amount and stop use if irritation develops. Do not use as a skin treatment.",
     },
     {
       slug: 'ayur-silk-protein-mask', name: 'Prodiva Protein Mask', category: 'hair', price: 70, size: '250 ml', badge: '',
       short: 'A 250 ml protein mask for an intensive conditioning step on wash day.',
       description: 'A protein mask for a more intensive conditioning step in your wash-day routine. Follow the directions on the product label and rinse thoroughly.',
       ingredients: '',
-      directions: 'Apply after cleansing to damp hair, distributing from mid-lengths through ends. Leave on for the time printed on the verified label, then rinse thoroughly. Follow the directions on the product label.',
+      directions: "After cleansing, apply to damp hair and distribute through the lengths and ends. Leave on for the time stated on the final product label, then rinse thoroughly.",
       sizeDetail: '250 ml', texture: 'Conditioning mask', scent: 'As labelled',
       highlights: ['Protein-mask treatment for wash day', 'A conditioning step for hair lengths', 'Follow the directions on the packaging'],
-      caution: 'Stop use if irritation occurs.'
+      caution: "For external use only. Avoid contact with eyes. Use only as directed on the final label and stop use if irritation develops.",
     },
     {
       slug: 'ayur-hair-growth-oil', name: 'Ayur Hair Growth Oil', category: 'hair', price: 75, size: '100 ml', badge: '',
       short: 'Herbal-infused hair growth oil for scalp massage and finishing your routine.',
       description: 'Herbal-infused hair growth oil in a 100 ml bottle, made for scalp massage and finishing your hair-care routine. Apply a small amount and adjust to your hair’s needs.',
       ingredients: '',
-      directions: 'Dispense a small amount into the palms or fingertips and apply where needed. Massage the scalp gently if that is part of your routine, or smooth a small amount over lengths and ends. Adjust quantity to avoid a heavy finish.',
+      directions: "Apply a small amount to the scalp or hair lengths as appropriate for the product label. Massage gently if applying to the scalp and smooth sparingly over the lengths and ends. Avoid applying more than needed.",
       sizeDetail: '100 ml', texture: 'Oil blend', scent: 'As labelled',
 
       highlights: ['Botanical oil blend', 'Use sparingly on the scalp or hair lengths', 'Available in a 100 ml bottle'],
-      caution: 'For external use only. Avoid contact with eyes and discontinue use if irritation occurs.'
+      caution: "For external use only. Avoid contact with eyes and do not swallow. If you have a sensitive scalp, test a small area first. Stop use if redness, itching or irritation develops. The product name is not a guarantee of hair growth.",
     },
     {
       slug: 'ayur-hair-growth-butter', name: 'Ayur Hair Growth Butter', category: 'hair', price: 50, size: '250 ml', badge: '',
       short: 'A rich 250 ml hair butter for moisture-focused styling and finishing.',
       description: 'A rich hair butter in a 250 ml jar, made for moisture-focused styling. Warm a little between your palms and smooth through lengths and ends as needed.',
       ingredients: '',
-      directions: 'Warm a small amount between the palms and smooth through dry or slightly damp lengths and ends. Start with less product and add only as needed. Adapt use to your hair texture and the final label instructions.',
+      directions: "Warm a small amount between the palms and smooth through the lengths and ends of dry or slightly damp hair. Begin with a little product and add more only if needed.",
       sizeDetail: '250 ml', texture: 'Rich butter', scent: 'As labelled',
 
       highlights: ['Rich emollient texture', 'Designed for use on lengths and ends', 'Available in a 250 ml jar'],
-      caution: 'Store in a cool, dry place and stop use if irritation occurs.'
+      caution: "For external use only. Avoid contact with eyes. Stop use if irritation develops and keep the container closed when not in use.",
     },
     {
       slug: 'ayur-hair-tea', name: 'Ayur Hair Tea', category: 'hair', price: 50, size: '200 g', badge: '',
       short: 'A botanical blend designed for a hair-care rinse or infusion routine.',
       description: 'A herbal hair tea for use as part of your hair-care routine. Prepare and apply only as directed on the product label; this product is not presented as a drink.',
       ingredients: '',
-      directions: 'Prepare the herbal blend in water as directed on the packaging. Allow the infusion to cool completely, strain it, and apply to the hair and scalp as instructed. This is a hair-care product; do not drink it.',
+      directions: "Prepare the blend according to the product packaging. Allow the infusion to cool completely and strain it before applying to hair or scalp as directed. If storing a prepared infusion, follow the package storage instructions and discard it after the stated storage period or sooner if its appearance or smell changes. This is a hair-care product, not a drink.",
       sizeDetail: '200 g botanical blend', texture: 'Botanical blend', scent: 'Herbal',
       highlights: ['Botanical blend', 'Complements a wash-day routine', 'Follow the package preparation instructions'],
-      caution: 'Use only as directed on the product label. Do not consume unless the package explicitly identifies it as a food product.'
+      caution: "For external use only. Do not consume. Allow the infusion to cool completely before application and avoid contact with eyes. Stop use if irritation develops.",
     },
     {
       slug: 'ayur-scalp-detox-mist', name: 'Rosemary Water Spray', category: 'hair', price: 25, size: '100 ml', badge: '',
       short: 'A 100 ml rosemary water spray for a light, refreshing step in your hair-care routine.',
       description: 'A fine rosemary water spray for use on hair and as part of a refreshing care routine. Apply sparingly and keep away from the eyes.',
       ingredients: '',
-      directions: 'Spray a light amount onto the intended areas from a comfortable distance. Avoid contact with eyes and stop use if irritation occurs.',
+      directions: "Use on the intended hair or scalp area in accordance with the final product label. Apply a light amount and keep the spray away from the eyes and face.",
       sizeDetail: '100 ml', texture: 'Fine mist', scent: 'As labelled',
       highlights: ['Fine-mist format', 'Designed for between-wash use', 'Can be placed in a simple daily care routine'],
-      caution: 'Avoid contact with eyes and discontinue use if irritation occurs.'
+      caution: "For external use only. Avoid inhaling the mist and keep away from eyes. Stop use if irritation develops. Store closed and away from excessive heat.",
     },
     {
       slug: 'ayur-beard-serum', name: 'Ayur Beard Serum', category: 'mens', price: 60, size: '30 ml', badge: '',
       short: 'A conditioning oil blend for a softer-feeling beard and neat finish.',
       description: 'A lightweight beard serum that helps soften the feel of facial hair and makes everyday grooming simple.',
       ingredients: '',
-      directions: 'Apply two or three drops to the palm, rub hands together then work through a clean, dry or slightly damp beard. Use less for shorter beards. Keep away from eyes and broken skin.',
+      directions: "Place two or three drops in the palm, rub hands together and smooth through a clean, dry or slightly damp beard. Start with less for short beards. Follow the final label for frequency of use.",
       sizeDetail: '30 ml', texture: 'Light oil serum', scent: 'As labelled',
       highlights: ['Made for beard grooming', 'Apply a small amount and distribute evenly', 'A lightweight oil format'],
-      caution: 'Patch-test before first use and avoid contact with eyes.'
+      caution: "For external use only. Avoid the eyes, mouth and broken skin. Test a small area first if your skin is sensitive and stop use if irritation develops.",
     },
     {
       slug: 'derma-roller', name: 'Derma Roller', category: 'tools', price: 70, size: '1 tool', badge: '',
       short: 'A personal grooming tool for a considered at-home routine.',
-      description: 'A personal-care derma roller. Follow the manufacturer’s hygiene and use instructions carefully, and do not use on irritated or broken skin.',
+      description: 'A personal-care derma roller. Follow the manufacturer’s hygiene and use instructions carefully and do not use on irritated or broken skin.',
       ingredients: '',
-      directions: 'Follow the manufacturer’s verified instructions only. Do not share the tool. Do not use on irritated, infected or broken skin. Confirm cleaning, storage and replacement guidance before use.',
+      directions: "Use only in line with the instructions supplied for this exact tool. If clear instructions are not included, contact the seller or manufacturer before use. Do not roll over the scalp or skin unless the manufacturer confirms the intended area and method.",
       sizeDetail: '1 tool', texture: 'Personal-care tool', scent: 'Not applicable',
       highlights: ['Personal-use grooming accessory', 'Use according to the manufacturer’s instructions', 'Use according to the manufacturer’s hygiene guidance'],
-      caution: 'Use only as directed by the manufacturer. Do not use on irritated, infected or broken skin.'
+      caution: "This tool is not a treatment for hair loss. Do not use on irritated, infected, inflamed or broken skin. Never share it. Do not use a damaged tool or one with bent needles. Home devices that puncture skin can cause infection or scarring; seek advice from a qualified healthcare professional before any skin-penetrating use.",
     },
     {
       slug: 'satin-bonnet', name: 'Satin Bonnet', category: 'tools', price: 40, size: 'One size', badge: '',
       short: 'A satin-style hair covering for bedtime and protective styling.',
       description: 'A satin bonnet designed to help keep hair covered and in place while you rest or style. Choose your preferred colour and follow the care guidance for the fabric.',
       ingredients: '',
-      directions: 'Gather hair comfortably and position the bonnet without pulling the hairline. Adjust the band for a secure but comfortable fit. Follow the verified care instructions for washing and drying.',
+      directions: "Gather hair gently and place the bonnet over it without pulling or tightening the hairline. Adjust for a comfortable fit. Clean and dry the bonnet according to the fabric care guidance supplied with the item.",
       sizeDetail: 'One size', texture: 'Satin-style fabric', scent: 'Not applicable',
       colorOptions: true,
       highlights: ['For bedtime and selected protective styles', 'Available in black, red, purple and pink', 'Red is the initial storefront colour'],
-      caution: 'Follow the fabric care guidance supplied with the product.'
+      caution: "Stop wearing it if the band causes pressure or discomfort. Keep fabric away from open flames and follow any care instructions supplied with the item.",
     },
     {
       slug: 'steaming-cap', name: 'Steaming Cap for Deep Conditioning', category: 'tools', price: 50, size: 'One size', badge: '',
       short: 'A cap accessory for a deep-conditioning step at home.',
       description: 'A reusable steaming-cap accessory to pair with a deep-conditioning routine. Use only according to the instructions supplied with the cap.',
       ingredients: '',
-      directions: 'Use only in line with the instructions provided with the exact product. Do not use if the product or its wiring appears damaged. Do not leave a powered device unattended and allow it to cool fully before storage if the model generates heat.',
+      directions: "Apply a hair treatment according to that treatment label. With the cap unplugged, place it over the hair and use only the settings and duration stated in the instruction leaflet supplied with this exact cap. Switch off and unplug before removing or storing it, then allow it to cool fully.",
       sizeDetail: 'One size', texture: 'Cap accessory', scent: 'Not applicable',
       colorOptions: true,
       highlights: ['Accessory for a conditioning step', 'Available in pink and red', 'Pink is the initial storefront colour'],
-      caution: 'Follow the manufacturer’s safety instructions. Do not use if the cap or its wiring appears damaged.'
+      caution: "Electrical heat accessory: confirm the supplied instructions, correct voltage and use duration before first use. Keep the controller, plug and cord dry. Do not use near water, while asleep or unattended. Never use if the cap, cable or plug is damaged. Stop immediately if it becomes uncomfortably hot.",
     },
     {
       slug: 'spray-bottle', name: 'Spray Bottle', category: 'tools', price: 30, size: '300 ml', badge: '',
       short: 'A refillable spray bottle for controlled water or product application.',
       description: 'A refillable spray bottle for applying water or suitable hair-care liquids during styling and wash-day preparation.',
       ingredients: '',
-      directions: 'Fill only with liquids suitable for the bottle and nozzle. Label contents clearly and rinse the bottle as needed. Do not mix products unless their instructions confirm they are compatible.',
+      directions: "Fill with water or a liquid confirmed as compatible with the bottle. Secure the nozzle, test the spray away from the face and label the contents clearly. Empty and rinse the bottle between different products.",
       sizeDetail: '300 ml', texture: 'Refillable accessory', scent: 'Not applicable',
       highlights: ['Refillable format', 'Useful for controlled misting', 'Refillable design for everyday styling'],
-      caution: 'Keep contents labelled and store filled bottles away from young children.'
+      caution: "Do not fill with hot liquids, solvents or incompatible chemicals. Never use an unlabelled bottle for food or drink. Keep away from children and avoid spraying toward the eyes.",
     }
   ];
 
@@ -557,7 +557,8 @@
     setText('[data-product-breadcrumb]', currentProduct.name);
     setText('[data-product-category]', '');
     const ingredientSection = document.querySelector('[data-ingredients-section]');
-    if (ingredientSection) ingredientSection.hidden = !String(currentProduct.ingredients || '').trim();
+    const neverShowIngredients = ['derma-roller', 'satin-bonnet', 'steaming-cap'].includes(currentProduct.slug);
+    if (ingredientSection) ingredientSection.hidden = neverShowIngredients || !String(currentProduct.ingredients || '').trim();
     setText('[data-product-title]', currentProduct.name);
     setText('[data-product-short]', currentProduct.short);
     setText('[data-product-description]', currentProduct.description);
@@ -916,7 +917,7 @@
 
   async function loadRemoteCatalogue() {
     try {
-      const response = await fetch('/.netlify/functions/catalogue', { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
+      const response = await fetch('/.netlify/functions/catalogue', { headers: { 'Accept': 'application/json' }, cache: 'default' });
       if (!response.ok) return;
       const payload = await response.json();
       if (!Array.isArray(payload.products)) return;
@@ -931,6 +932,7 @@
         if (normalized.slug === 'ayur-leave-in-conditioner') { normalized.size = '250 ml'; normalized.sizeDetail = '250 ml'; }
         if (normalized.slug === 'ayur-hair-tea') { normalized.size = '200 g'; normalized.sizeDetail = '200 g botanical blend'; }
         if (normalized.slug === 'ayur-scalp-detox-mist') normalized.name = 'Rosemary Water Spray';
+        if (['derma-roller', 'satin-bonnet', 'steaming-cap'].includes(normalized.slug)) normalized.ingredients = '';
         if (remote.useRepositoryImages) {
           if (base.slug && IMAGES.products && IMAGES.products[base.slug]) IMAGES.products[remote.slug] = IMAGES.products[base.slug];
         } else if (Array.isArray(remote.images) && remote.images.length) {

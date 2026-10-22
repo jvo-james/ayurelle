@@ -39,7 +39,7 @@
     }
   }
   function renderReceipt(order) {
-    $('[data-receipt-reference]').textContent = order.reference || 'Confirmed';
+    $('[data-receipt-reference]').textContent = order.orderNumber || order.reference || 'Confirmed';
     const date = order.paidAt && order.paidAt._seconds ? new Date(order.paidAt._seconds * 1000) : new Date();
     $('[data-receipt-date]').textContent = `Payment verified ${date.toLocaleString('en-GH', { dateStyle: 'medium', timeStyle: 'short' })}`;
     const customer = order.customer || {};
@@ -74,7 +74,7 @@
       doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(245, 239, 215); doc.text('ORGANICS  |  FEED YOUR SCALP. FLOURISH YOUR CROWN.', left, 29);
       doc.setFontSize(10); doc.text('PAYMENT RECEIPT', left, 37);
       y = 57; doc.setTextColor(23, 58, 37); doc.setFont('times', 'bold'); doc.setFontSize(20); doc.text('Your order is confirmed', left, y); y += 10;
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.text('ORDER REFERENCE', left, y); doc.setFont('helvetica', 'normal'); doc.text(String(orderData.reference || ''), left + 35, y); y += 7;
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.text('ORDER REFERENCE', left, y); doc.setFont('helvetica', 'normal'); doc.text(String(orderData.orderNumber || orderData.reference || ''), left + 35, y); y += 7;
       doc.setFontSize(8); doc.setTextColor(100, 112, 99); doc.text(`Customer: ${orderData.customer?.name || ''}`, left, y); y += 5; doc.text(`Email: ${orderData.customer?.email || ''}`, left, y); y += 5; doc.text(`Phone: ${orderData.customer?.phone || ''}`, left, y); y += 5;
       const delivery = orderData.delivery || {};
       const scheduleRaw = delivery.scheduledDate || delivery.requestedDate || '';
@@ -101,7 +101,7 @@
       const note = doc.splitTextToSize(delivery.method === 'pickup' ? 'Pickup is arranged for the scheduled date above. Please wait for our confirmation before travelling to collect your order. Keep this receipt and order reference for your records.' : 'Delivery charges are not included in this receipt. Ayurélle Organics will confirm the delivery amount after reviewing your location. Keep this receipt and order reference for your records.', 172);
       doc.text(note, left, y); y += note.length * 4 + 10;
       doc.setDrawColor(197, 161, 59); doc.line(left, y, 192, y); y += 8; doc.setFont('times', 'italic'); doc.setFontSize(11); doc.setTextColor(23, 58, 37); doc.text('Thank you for choosing Ayurélle Organics.', left, y);
-      doc.save(`Ayurelle-Receipt-${String(orderData.reference).replace(/[^A-Za-z0-9-]/g, '')}.pdf`);
+      doc.save(`Ayurelle-Receipt-${String(orderData.orderNumber || orderData.reference).replace(/[^A-Za-z0-9-]/g, '')}.pdf`);
     } catch (error) {
       console.error('Receipt PDF error:', error);
       window.print();
