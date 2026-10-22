@@ -9,7 +9,7 @@ import { emailTemplate } from './_email-templates.mjs';
 export const adminEmails = () => (process.env.ADMIN_EMAILS || process.env.ADMIN_NOTIFICATION_EMAIL || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 export const adminEmail = () => process.env.ADMIN_NOTIFICATION_EMAIL || adminEmails()[0] || '';
 export const siteUrl = () => (process.env.SITE_URL || process.env.URL || '').replace(/\/$/, '');
-export const fromEmail = () => process.env.RESEND_FROM_EMAIL || 'Ayurélle Organics <onboarding@resend.dev>';
+export const fromEmail = () => process.env.RESEND_FROM_EMAIL || 'Ayurèlle Organics <onboarding@resend.dev>';
 
 export function json(data, status = 200, headers = {}) {
   const body = status === 204 || status === 304 ? null : JSON.stringify(data);
@@ -82,7 +82,6 @@ export async function loadServerCatalogue(db) {
   const products = productSnap.docs.map(doc => {
     const product = { ...doc.data(), id: doc.id, slug: doc.data().slug || doc.id };
     if (Number(product.contentReviewVersion || 0) < 3 && fallbackProductGuidance[product.slug]) Object.assign(product, fallbackProductGuidance[product.slug]);
-    if (['derma-roller', 'satin-bonnet', 'steaming-cap'].includes(product.slug)) product.ingredients = '';
     // These three items are sold in a single label-confirmed size. Ignore old
     // variant records so a previous configuration cannot block checkout.
     if (product.slug === 'ayur-hair-growth-oil') { delete product.variants; product.size = product.sizeDetail = '100 ml'; }

@@ -13,6 +13,6 @@ export default async request => {
     return json({ paid: true, reference, order: { reference, orderNumber: order.orderNumber || reference, status: order.status, paymentStatus: order.paymentStatus, customer: order.customer, delivery: order.delivery, items: order.items, subtotal: order.subtotal, processingFee: order.processingFee, amountDue: order.amountDue, currency: order.currency, paidAt: order.paidAt || null } });
   } catch (error) {
     console.error('paystack verify:', error.message);
-    return json({ error: error.statusCode ? error.message : 'We could not verify the payment right now. Please refresh in a moment or contact Ayurélle with your payment reference.' }, error.statusCode || 500);
+    return json({ error: error.statusCode ? error.message : 'We could not verify the payment right now. Please refresh in a moment or contact Ayurèlle with your payment reference.' }, error.statusCode || 500);
   }
 };

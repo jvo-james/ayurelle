@@ -1,4 +1,4 @@
-import { getAdminServices, json, methodNotAllowed, readJson, safeString, verifyBearer, sendEmail, adminEmail, siteUrl } from './_shared.mjs';
+import { getAdminServices, json, methodNotAllowed, readJson, safeString, verifyBearer, sendEmail, siteUrl } from './_shared.mjs';
 const ALLOWED = new Set(['processing', 'preparing', 'ready for pickup', 'dispatched', 'delivered', 'cancelled']);
 export default async request => {
   if (request.method === 'OPTIONS') return json({}, 204);
@@ -18,12 +18,16 @@ export default async request => {
     if (order.status === status) return json({ ok: true, message: 'The order already has this status.' });
     await ref.update({ status, updatedAt: FieldValue.serverTimestamp(), statusUpdatedBy: admin.email || admin.uid });
     const updated = { ...order, reference, status };
-    const result = await Promise.allSettled([
-      order.customer?.email ? sendEmail({ to: order.customer.email, type: 'order-status-user', data: { order: updated, name: order.customer.name, reference, status, receiptUrl: `${siteUrl()}/confirmation.html?reference=${encodeURIComponent(reference)}` } }) : Promise.resolve(),
-      adminEmail() ? sendEmail({ to: adminEmail(), type: 'order-status-admin', data: { order: updated, reference, status, updatedBy: admin.email || admin.uid } }) : Promise.resolve()
-    ]);
-    const emailFailures = result.filter(item => item.status === 'rejected').length;
-    return json({ ok: true, message: emailFailures ? 'Order status updated, but one or more emails could not be sent.' : 'Order status updated and email notifications sent.' });
+    let emailFailed = false;
+    if (order.customer?.email) {
+      try {
+        await sendEmail({ to: order.customer.email, type: 'order-status-user', data: { order: updated, name: order.customer.name, reference, status, receiptUrl: `${siteUrl()}/confirmation.html?reference=${encodeURIComponent(reference)}` } });
+      } catch (emailError) {
+        emailFailed = true;
+        console.error('Customer order-status email could not be sent:', emailError.message);
+      }
+    }
+    return json({ ok: true, message: emailFailed ? 'Order status updated, but the customer email could not be sent.' : 'Order status updated. The customer has been notified.' });
   } catch (error) {
     console.error('order-status:', error.message);
     return json({ error: error.statusCode ? error.message : 'Could not update the order status.' }, error.statusCode || 500);

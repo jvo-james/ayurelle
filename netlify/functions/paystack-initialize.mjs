@@ -3,7 +3,7 @@ export default async request => {
   if (request.method === 'OPTIONS') return json({}, 204);
   if (request.method !== 'POST') return methodNotAllowed();
   try {
-    if (!process.env.PAYSTACK_SECRET_KEY) return json({ error: 'Online payment is not configured yet. Please contact Ayurélle to complete your order.' }, 503);
+    if (!process.env.PAYSTACK_SECRET_KEY) return json({ error: 'Online payment is not configured yet. Please contact Ayurèlle to complete your order.' }, 503);
     const input = await readJson(request);
     const customer = { name: safeString(input.customer?.name, 100), email: normalEmail(input.customer?.email), phone: safeString(input.customer?.phone, 40) };
     const method = input.delivery?.method === 'pickup' ? 'pickup' : 'delivery';
@@ -83,7 +83,7 @@ export default async request => {
     if (!providerResponse.ok || !provider.status || !provider.data?.authorization_url) {
       await db.collection('orders').doc(reference).update({ paymentStatus: 'initialization failed', status: 'cancelled', updatedAt: FieldValue.serverTimestamp() });
       console.error('Paystack initialize failed:', provider.message || providerResponse.status);
-      return json({ error: 'We could not start payment. Please try again or contact Ayurélle.' }, 502);
+      return json({ error: 'We could not start payment. Please try again or contact Ayurèlle.' }, 502);
     }
     return json({ authorizationUrl: provider.data.authorization_url, reference, amountDue: priced.amountDue, currency: 'GHS' });
   } catch (error) {
