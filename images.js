@@ -6,7 +6,7 @@
 */
 window.AYURELLE_IMAGES = {
   logoMark: 'images/logo.jpeg', // Replace this one value to change the round header logo and browser icon.
-  heroBackground: 'images/hero.jpg',
+  heroBackground: 'images/hero1.jpg',
   brandStory: 'images/brand-story.webp',
   newsletter: 'images/newsletter.jpeg',
   detailAccent: 'images/detailaccent.jpg',
