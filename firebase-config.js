@@ -17,7 +17,7 @@ window.AYURELLE_FIREBASE_CONFIG = {
    admins/{uid} Firestore membership document or admin custom claim and by
    the matching server-side ADMIN_EMAILS environment variable. */
 window.AYURELLE_ADMIN_CONFIG = {
-  adminEmails: ['jadelstech@gmail.com']
+  adminEmails: ['ayurelleorganics@yahoo.com']
 };
 
 /* Public Cloudinary identifier only. The API secret stays in Netlify env vars. */
