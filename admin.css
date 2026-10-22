@@ -250,3 +250,12 @@
 
 /* Keep the create-product panel free of the edit-only image preview. */
 [data-product-preview-card][hidden] { display: none !important; }
+
+/* Simple product availability toggle */
+
+.admin-editor-grid > [data-inventory-field][hidden] { display: none !important; }
+.admin-out-of-stock-check { border-color: #e8d7b8; background: linear-gradient(120deg, #fcf7eb, #fffdf7); }
+.admin-out-of-stock-check > input { accent-color: #98713b; }
+.admin-out-of-stock-check strong { color: #715332; }
+.admin-out-of-stock-check small { color: #87765f; }
+

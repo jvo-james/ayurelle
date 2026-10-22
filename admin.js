@@ -160,7 +160,7 @@ async function seedCatalogueIfNeeded() {
       const imageVariants = window.AYURELLE_IMAGES?.variants?.[product.slug] || null;
       batch.set(doc(db, 'products', product.slug), {
         ...product, images: [], imageUrl: '', useRepositoryImages: true, imageVariants,
-        stock: 0, lowStockThreshold: 5, trackInventory: false, active: true, sortOrder: index + 1,
+        stock: 0, lowStockThreshold: 5, trackInventory: false, outOfStock: false, active: true, sortOrder: index + 1,
         contentReviewVersion: 3, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
       });
     });
@@ -169,7 +169,7 @@ async function seedCatalogueIfNeeded() {
     productRows = defaults.map((product, index) => ({
       ...product, id: product.slug, images: [], imageUrl: '', useRepositoryImages: true,
       imageVariants: window.AYURELLE_IMAGES?.variants?.[product.slug] || null,
-      stock: 0, lowStockThreshold: 5, trackInventory: false, active: true, sortOrder: index + 1, contentReviewVersion: 3
+      stock: 0, lowStockThreshold: 5, trackInventory: false, outOfStock: false, active: true, sortOrder: index + 1, contentReviewVersion: 3
     }));
   } else {
     const defaultsBySlug = new Map((window.AYURELLE_CATALOGUE?.list || []).map(item => [item.slug, item]));
@@ -410,6 +410,7 @@ function renderProducts() {
 }
 function minPrice(p) { return Array.isArray(p.variants) && p.variants.length ? Math.min(...p.variants.map(v => Number(v.price) || 0)) : Number(p.price || 0); }
 function inventoryLabel(p) {
+  if (p.outOfStock === true) return '<span class="admin-stock-label stock-out"><i></i>Out of stock</span>';
   if (!p.trackInventory) return '<span class="admin-stock-label stock-untracked">Not tracked</span>';
   const stock = Number(p.stock || 0), low = Number(p.lowStockThreshold ?? 5);
   return `<span class="admin-stock-label ${stock <= 0 ? 'stock-out' : stock <= low ? 'stock-low' : 'stock-good'}"><i></i>${stock <= 0 ? 'Out of stock' : stock <= low ? `${stock} left` : `${stock} in stock`}</span>`;
@@ -423,9 +424,9 @@ function renderInventory() {
   $('[data-inv-tracked]').textContent = tracked.length;
   $('[data-inv-units]').textContent = tracked.reduce((sum,p) => sum + Math.max(0, Number(p.stock || 0)), 0);
   $('[data-inv-low]').textContent = low.length;
-  $('[data-inv-out]').textContent = tracked.filter(p => Number(p.stock || 0) <= 0).length;
+  $('[data-inv-out]').textContent = products.filter(p => p.outOfStock === true || (p.trackInventory && Number(p.stock || 0) <= 0)).length;
   const results = products.filter(p => !query || [p.name,p.slug].join(' ').toLowerCase().includes(query));
-  tbody.innerHTML = results.length ? results.map(p => `<tr class="admin-clickable-row" data-edit-product="${esc(p.slug)}" tabindex="0" aria-label="Edit ${esc(p.name)}"><td><div class="admin-table-product"><span class="admin-table-product-image"><img src="${esc(p.useRepositoryImages ? initialImage(p) : p.images?.[0] || p.imageUrl || initialImage(p))}" alt="" loading="lazy"></span><span><strong>${esc(p.name)}</strong><small>${esc(p.slug)}</small></span></div></td><td><label class="admin-switch"><input type="checkbox" data-stock-track="${esc(p.slug)}" ${p.trackInventory ? 'checked' : ''}><span></span><small>${p.trackInventory ? 'On' : 'Off'}</small></label></td><td><input class="admin-inline-number" type="number" min="0" step="1" value="${Number(p.stock || 0)}" data-stock-value="${esc(p.slug)}" ${p.trackInventory ? '' : 'disabled'} aria-label="Stock count for ${esc(p.name)}"></td><td><input class="admin-inline-number" type="number" min="0" step="1" value="${Number(p.lowStockThreshold ?? 5)}" data-stock-threshold="${esc(p.slug)}" aria-label="Low stock alert for ${esc(p.name)}"></td><td><button class="admin-row-action" type="button" data-edit-product="${esc(p.slug)}" aria-label="Edit ${esc(p.name)}"><i class="fa-solid fa-pen"></i></button></td></tr>`).join('') : '<tr><td colspan="5"><div class="admin-empty-table">No matching products.</div></td></tr>';
+  tbody.innerHTML = results.length ? results.map(p => `<tr class="admin-clickable-row" data-edit-product="${esc(p.slug)}" tabindex="0" aria-label="Edit ${esc(p.name)}"><td><div class="admin-table-product"><span class="admin-table-product-image"><img src="${esc(p.useRepositoryImages ? initialImage(p) : p.images?.[0] || p.imageUrl || initialImage(p))}" alt="" loading="lazy"></span><span><strong>${esc(p.name)}</strong><small>${esc(p.slug)}</small>${p.outOfStock === true ? '<small class="admin-stock-label stock-out"><i></i>Marked out of stock</small>' : ''}</span></div></td><td><label class="admin-switch"><input type="checkbox" data-stock-track="${esc(p.slug)}" ${p.trackInventory ? 'checked' : ''}><span></span><small>${p.trackInventory ? 'On' : 'Off'}</small></label></td><td><input class="admin-inline-number" type="number" min="0" step="1" value="${Number(p.stock || 0)}" data-stock-value="${esc(p.slug)}" ${p.trackInventory ? '' : 'disabled'} aria-label="Stock count for ${esc(p.name)}"></td><td><input class="admin-inline-number" type="number" min="0" step="1" value="${Number(p.lowStockThreshold ?? 5)}" data-stock-threshold="${esc(p.slug)}" aria-label="Low stock alert for ${esc(p.name)}"></td><td><button class="admin-row-action" type="button" data-edit-product="${esc(p.slug)}" aria-label="Edit ${esc(p.name)}"><i class="fa-solid fa-pen"></i></button></td></tr>`).join('') : '<tr><td colspan="5"><div class="admin-empty-table">No matching products.</div></td></tr>';
 }
 function populateProductCategoryFilter() {
   const options = categories.map(category => `<option value="${esc(category.slug)}">${esc(category.name)}</option>`).join('');
@@ -552,6 +553,12 @@ function parseJsonField(value, fallback, label) {
   if (!String(value || '').trim()) return fallback;
   try { return JSON.parse(value); } catch { throw new Error(`${label} must be valid JSON.`); }
 }
+function syncProductInventoryFields() {
+  const form = $('[data-product-form]');
+  if (!form) return;
+  const tracking = !!form.elements.trackInventory.checked;
+  form.querySelectorAll('[data-inventory-field]').forEach(field => { field.hidden = !tracking; });
+}
 function fillProductForm(product = null) {
   const form = $('[data-product-form]');
   form.reset();
@@ -569,13 +576,14 @@ function fillProductForm(product = null) {
   const set = (name, value) => { if (form.elements[name]) form.elements[name].value = value ?? ''; };
   set('name', product?.name || ''); set('slug', product?.slug || ''); set('category', product?.category || categories.find(c => c.active !== false)?.slug || 'hair');
   set('price', product?.price ?? ''); set('size', product?.size || ''); set('stock', product?.stock ?? 0); set('lowStockThreshold', product?.lowStockThreshold ?? 5);
-  set('active', String(product?.active !== false)); form.elements.trackInventory.checked = !!product?.trackInventory;
+  set('active', String(product?.active !== false)); form.elements.trackInventory.checked = !!product?.trackInventory; form.elements.outOfStock.checked = product?.outOfStock === true;
+  syncProductInventoryFields();
   set('short', product?.short || ''); set('description', product?.description || ''); set('ingredients', product?.ingredients || ''); set('directions', product?.directions || ''); set('sizeDetail', product?.sizeDetail || ''); set('texture', product?.texture || ''); set('scent', product?.scent || ''); set('badge', product?.badge || ''); set('caution', product?.caution || ''); set('highlights', (product?.highlights || []).join('\n')); set('contains', (product?.contains || []).map(item => typeof item === 'string' ? item : item.slug).join('\n'));
   set('images', draftImages.join('\n')); form.elements.useRepositoryImages.checked = product ? !!product.useRepositoryImages : false;
   set('variantsJson', JSON.stringify(product?.variants || [], null, 2));
   const imageVariants = product?.imageVariants || (product && window.AYURELLE_IMAGES?.variants?.[product.slug]) || {};
   set('imageVariantsJson', JSON.stringify(imageVariants, null, 2));
-  set('advancedJson', JSON.stringify(product ? cleanForJson(product) : { slug: '', name: '', category: 'hair', price: 0, size: '', short: '', description: '', ingredients: '', directions: '', highlights: [], contains: [], active: true, stock: 0, trackInventory: false }, null, 2));
+  set('advancedJson', JSON.stringify(product ? cleanForJson(product) : { slug: '', name: '', category: 'hair', price: 0, size: '', short: '', description: '', ingredients: '', directions: '', highlights: [], contains: [], active: true, stock: 0, trackInventory: false, outOfStock: false }, null, 2));
   renderDraftImages();
   renderSetContentsPicker(product);
   updateSetPickerVisibility();
@@ -713,7 +721,7 @@ function saveProduct(event) {
         slug, name: form.elements.name.value.trim(), category: form.elements.category.value,
         price: Number(form.elements.price.value), size: form.elements.size.value.trim(),
         stock: Math.max(0, Number(form.elements.stock.value) || 0), lowStockThreshold: Math.max(0, Number(form.elements.lowStockThreshold.value) || 0),
-        active: form.elements.active.value === 'true', trackInventory: form.elements.trackInventory.checked,
+        active: form.elements.active.value === 'true', trackInventory: form.elements.trackInventory.checked, outOfStock: form.elements.outOfStock.checked,
         short: form.elements.short.value.trim(), description: form.elements.description.value.trim(),
         ingredients: form.elements.ingredients.value.trim(), directions: form.elements.directions.value.trim(),
         sizeDetail: form.elements.sizeDetail.value.trim(), texture: form.elements.texture.value.trim(), scent: form.elements.scent.value.trim(), badge: form.elements.badge.value.trim(), caution: form.elements.caution.value.trim(),
@@ -1096,6 +1104,7 @@ function bindEvents() {
     const readMessage = event.target.closest('[data-message-read]'); if (readMessage) { updateDoc(doc(db,'contact_messages',readMessage.dataset.messageRead), { status: 'read', readAt: serverTimestamp() }).then(async () => { await subscribeRealtimeData(['contact_messages']); toast('Message marked as read.'); }).catch(error => toast(error.message,'error')); }
   });
   document.addEventListener('change', async event => {
+    if (event.target.matches('[name="trackInventory"]')) { syncProductInventoryFields(); return; }
     const track = event.target.closest('[data-stock-track]');
     if (track) {
       const product = products.find(p => p.slug === track.dataset.stockTrack); if (!product) return;
