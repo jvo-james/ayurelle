@@ -22,5 +22,5 @@ window.AYURELLE_ADMIN_CONFIG = {
 
 /* Public Cloudinary identifier only. The API secret stays in Netlify env vars. */
 window.AYURELLE_CLOUDINARY_CONFIG = {
-  cloudName: 'REPLACE_WITH_CLOUDINARY_CLOUD_NAME'
+  cloudName: 'fhrdojhi'
 };
