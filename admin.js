@@ -219,31 +219,46 @@ async function seedCatalogueIfNeeded() {
   if (seededProducts) toast('Your product catalogue is ready. Review prices and stock levels before taking orders.');
   return { products: productRows, categories: categoryRows };
 }
-async function migrateOrderNumbers(snapshot) {
-  const markerRef = doc(db, 'settings', 'order-number-migration');
-  const marker = await getDoc(markerRef);
-  if (marker.exists() && marker.data().complete === true) return new Map(snapshot.docs.map(orderDoc => [orderDoc.id, orderDoc.data().orderNumber || '']));
+function buildDisplayOrderNumbers(snapshot) {
+  // Historical order labels are derived in memory only. Browser-side writes to
+  // orders are intentionally blocked by Firestore rules, so signing in must
+  // never depend on a migration write succeeding.
   const sorted = [...snapshot.docs].sort((a, b) => {
-    const da = dateFrom(a.data().createdAt)?.getTime() || 0;
-    const db = dateFrom(b.data().createdAt)?.getTime() || 0;
-    if (da !== db) return da - db;
-    const sa = Number(a.data().orderSequence || 0), sb = Number(b.data().orderSequence || 0);
-    return sa !== sb ? sa - sb : a.id.localeCompare(b.id);
+    const aDate = dateFrom(a.data().createdAt)?.getTime() || 0;
+    const bDate = dateFrom(b.data().createdAt)?.getTime() || 0;
+    if (aDate !== bDate) return aDate - bDate;
+    const aSequence = Number(a.data().orderSequence || 0);
+    const bSequence = Number(b.data().orderSequence || 0);
+    return aSequence !== bSequence ? aSequence - bSequence : a.id.localeCompare(b.id);
   });
-  let batch = writeBatch(db), queued = 0;
   const numbers = new Map();
-  for (let index = 0; index < sorted.length; index++) {
-    const snap = sorted[index];
-    const orderNumber = `AYR-${String(index + 1).padStart(5, '0')}`;
-    const data = snap.data();
-    numbers.set(snap.id, orderNumber);
-    if (data.orderNumber === orderNumber && Number(data.orderSequence) === index + 1) continue;
-    batch.update(doc(db, 'orders', snap.id), { orderNumber, orderSequence: index + 1 });
-    queued++;
-    if (queued >= 450) { await batch.commit(); batch = writeBatch(db); queued = 0; }
+  const used = new Set();
+
+  // Keep valid numbers already assigned by the trusted checkout function.
+  for (const orderDoc of sorted) {
+    const data = orderDoc.data() || {};
+    const existing = [data.orderNumber, data.reference, orderDoc.id]
+      .map(value => String(value || '').match(/^AYR-(\d{5,})$/))
+      .find(Boolean);
+    const sequence = Number(data.orderSequence || (existing ? existing[1] : 0));
+    if (sequence < 1) continue;
+    const orderNumber = `AYR-${String(sequence).padStart(5, '0')}`;
+    numbers.set(orderDoc.id, { orderNumber, orderSequence: sequence });
+    used.add(sequence);
   }
-  if (queued) await batch.commit();
-  await setDoc(markerRef, { complete: true, orderCount: sorted.length, completedAt: serverTimestamp() }, { merge: true });
+
+  // Give older records without a numeric label a stable, chronological display
+  // label without trying to update the protected order documents.
+  let candidate = 1;
+  for (const orderDoc of sorted) {
+    if (numbers.has(orderDoc.id)) continue;
+    while (used.has(candidate)) candidate++;
+    numbers.set(orderDoc.id, {
+      orderNumber: `AYR-${String(candidate).padStart(5, '0')}`,
+      orderSequence: candidate
+    });
+    used.add(candidate++);
+  }
   return numbers;
 }
 
@@ -267,10 +282,13 @@ async function subscribeRealtimeData(names = ['products', 'orders', 'categories'
       return [name, result.snapshot];
     }));
     for (const [name, snap] of snapshots) {
-      const needsNumberMigration = name === 'orders' && fullRead && snap.docs.some(orderDoc => !orderDoc.data().orderNumber || !Number(orderDoc.data().orderSequence));
-      const migratedOrderNumbers = needsNumberMigration ? await migrateOrderNumbers(snap) : null;
+      const displayOrderNumbers = name === 'orders' ? buildDisplayOrderNumbers(snap) : null;
       if (name === 'products') products = snap.docs.map(d => ({ ...d.data(), id: d.id, slug: d.data().slug || d.id })).sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0) || String(a.name).localeCompare(String(b.name)));
-      if (name === 'orders') orders = snap.docs.map(d => ({ ...normaliseOrder(d), orderNumber: d.data().orderNumber || migratedOrderNumbers?.get(d.id) || '', orderSequence: Number(d.data().orderSequence || String(migratedOrderNumbers?.get(d.id) || '').slice(4) || 0) })).sort((a, b) => (dateFrom(b.createdAt)?.getTime() || 0) - (dateFrom(a.createdAt)?.getTime() || 0));
+      if (name === 'orders') orders = snap.docs.map(d => ({
+        ...normaliseOrder(d),
+        orderNumber: displayOrderNumbers?.get(d.id)?.orderNumber || d.data().orderNumber || d.data().reference || d.id,
+        orderSequence: Number(d.data().orderSequence || displayOrderNumbers?.get(d.id)?.orderSequence || 0)
+      })).sort((a, b) => (dateFrom(b.createdAt)?.getTime() || 0) - (dateFrom(a.createdAt)?.getTime() || 0));
       if (name === 'categories') categories = snap.docs.map(d => ({ ...d.data(), id: d.id, slug: d.data().slug || d.id })).sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0) || String(a.name).localeCompare(String(b.name)));
       if (name === 'contact_messages') messages = snap.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (dateFrom(b.createdAt)?.getTime() || 0) - (dateFrom(a.createdAt)?.getTime() || 0));
       if (name === 'newsletter_subscribers') subscribers = snap.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (dateFrom(b.subscribedAt)?.getTime() || 0) - (dateFrom(a.subscribedAt)?.getTime() || 0));
@@ -985,7 +1003,8 @@ function bindEvents() {
 }
 function friendlyError(error, fallback = 'We could not complete that change. Please check your connection and try again.') {
   const code = String(error?.code || '');
-  if (code.includes('permission-denied') || code.includes('unauthenticated') || code.includes('auth/requires-recent-login')) return 'For your security, please sign in again and retry that change.';
+  if (code.includes('permission-denied')) return 'Your sign-in was recognised, but the dashboard could not access some store information. Please check the admin access settings and try again.';
+  if (code.includes('unauthenticated') || code.includes('auth/requires-recent-login')) return 'For your security, please sign in again and retry that change.';
   if (code.includes('network') || /network|offline/i.test(error?.message || '')) return 'Please check your internet connection and try again.';
   if (code.includes('email-already-in-use')) return 'That email address is already linked to another account.';
   if (code.includes('weak-password')) return 'Choose a stronger password with at least 8 characters.';
