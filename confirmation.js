@@ -15,7 +15,7 @@
   async function verify() {
     const params = new URLSearchParams(location.search);
     const reference = params.get('reference') || sessionStorage.getItem('ayurelle-pending-reference') || '';
-    if (!reference) { showError('No payment reference was found. If you completed a payment, please contact Ayurélle with the reference shown on your Paystack receipt.'); return; }
+    if (!reference) { showError('No payment reference was found. If you completed a payment, please contact Ayurèlle with the reference shown on your Paystack receipt.'); return; }
     try {
       const response = await fetch(`/.netlify/functions/paystack-verify?reference=${encodeURIComponent(reference)}`, { headers: { Accept: 'application/json' }, cache: 'no-store' });
       const result = await response.json().catch(() => ({}));
@@ -70,7 +70,7 @@
       const doc = new jsPDF({ unit: 'mm', format: 'a4' });
       const left = 18; let y = 20;
       doc.setFillColor(18, 55, 34); doc.rect(0, 0, 210, 43, 'F');
-      doc.setTextColor(228, 203, 118); doc.setFont('times', 'bold'); doc.setFontSize(25); doc.text('Ayurélle', left, 20);
+      doc.setTextColor(228, 203, 118); doc.setFont('times', 'bold'); doc.setFontSize(25); doc.text('Ayurèlle', left, 20);
       doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(245, 239, 215); doc.text('ORGANICS  |  FEED YOUR SCALP. FLOURISH YOUR CROWN.', left, 29);
       doc.setFontSize(10); doc.text('PAYMENT RECEIPT', left, 37);
       y = 57; doc.setTextColor(23, 58, 37); doc.setFont('times', 'bold'); doc.setFontSize(20); doc.text('Your order is confirmed', left, y); y += 10;
@@ -98,9 +98,9 @@
       const totals = [['Subtotal', orderData.subtotal], ['Processing fee', orderData.processingFee], ['PAID TODAY', orderData.amountDue]];
       totals.forEach(([label, amount], idx) => { doc.setFont('helvetica', idx === 2 ? 'bold' : 'normal'); doc.setTextColor(23, 58, 37); doc.text(label, 118, y); doc.text(money(amount), 192, y, { align: 'right' }); y += 7; });
       y += 5; doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(102, 112, 99);
-      const note = doc.splitTextToSize(delivery.method === 'pickup' ? 'Pickup is arranged for the scheduled date above. Please wait for our confirmation before travelling to collect your order. Keep this receipt and order reference for your records.' : 'Delivery charges are not included in this receipt. Ayurélle Organics will confirm the delivery amount after reviewing your location. Keep this receipt and order reference for your records.', 172);
+      const note = doc.splitTextToSize(delivery.method === 'pickup' ? 'Pickup is arranged for the scheduled date above. Please wait for our confirmation before travelling to collect your order. Keep this receipt and order reference for your records.' : 'Delivery charges are not included in this receipt. Ayurèlle Organics will confirm the delivery amount after reviewing your location. Keep this receipt and order reference for your records.', 172);
       doc.text(note, left, y); y += note.length * 4 + 10;
-      doc.setDrawColor(197, 161, 59); doc.line(left, y, 192, y); y += 8; doc.setFont('times', 'italic'); doc.setFontSize(11); doc.setTextColor(23, 58, 37); doc.text('Thank you for choosing Ayurélle Organics.', left, y);
+      doc.setDrawColor(197, 161, 59); doc.line(left, y, 192, y); y += 8; doc.setFont('times', 'italic'); doc.setFontSize(11); doc.setTextColor(23, 58, 37); doc.text('Thank you for choosing Ayurèlle Organics.', left, y);
       doc.save(`Ayurelle-Receipt-${String(orderData.orderNumber || orderData.reference).replace(/[^A-Za-z0-9-]/g, '')}.pdf`);
     } catch (error) {
       console.error('Receipt PDF error:', error);

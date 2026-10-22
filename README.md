@@ -1,4 +1,4 @@
-# Ayurélle Organics
+# Ayurèlle Organics
 
 A responsive botanical hair-care storefront with a product catalogue, shopping bag, secure Paystack checkout, receipt confirmation, customer email notifications and a Firebase-powered Store Studio admin console.
 
@@ -77,7 +77,7 @@ Replace `YOUR-DOMAIN` with the deployed domain. Test with Paystack test-mode cre
 Set these Netlify environment variables:
 
 - `RESEND_API_KEY`
-- `RESEND_FROM_EMAIL`, for example `Ayurélle Organics <orders@your-verified-domain.example>`
+- `RESEND_FROM_EMAIL`, for example `Ayurèlle Organics <orders@your-verified-domain.example>`
 
 Verify the sending domain in Resend before production use. The email template library contains responsive HTML and plain-text content for order receipts, admin order notifications, contact-form acknowledgements, admin contact alerts, newsletter welcome messages, subscriber alerts and order status changes. `ADMIN_NOTIFICATION_EMAIL` is used as the primary store inbox. Contact and newsletter forms use Netlify Functions and display a loading state that ends on success or failure.
 
@@ -85,7 +85,7 @@ Verify the sending domain in Resend before production use. The email template li
 
 Product photography and gallery mappings are managed in the repository assets and `images.js`. That file controls the brand mark, homepage hero, product photography, product galleries and colour variants. Social platforms do not always execute JavaScript, so after the production domain is selected, set the static `og:image` and `twitter:image` metadata in each HTML head to an absolute HTTPS share-image URL.
 
-The catalogue copy, prices, pack sizes, directions, cautions and set contents are maintained in `script.js` and can be edited through Store Studio. Ingredient fields are intentionally blank until the owner enters the approved ingredient text; the product page hides the complete Ingredients section while that field is empty. The Ayur Hair Growth Oil is sold in one 100 ml size, the Hair Growth Butter and Prodiva Protein Mask are shown as 250 ml items, both conditioners have corrected 250 ml sizes, and Ayur Hair Tea is shown as 200 g based on the package images reviewed for this update.
+The catalogue copy, prices, pack sizes, directions, cautions and set contents are maintained in `script.js` and can be edited through Store Studio. Ingredient fields are intentionally blank until the owner enters the approved ingredient text; the product page hides the complete Ingredients section while that field is empty. The Ayur Hair Growth Oil is sold in one 100 ml size, the Hair Growth Butter and Prodiva Protein Mask are shown as 250 ml items, both conditioners have corrected 250 ml sizes and Ayur Hair Tea is shown as 200 g based on the package images reviewed for this update.
 
 Before advertising a cosmetic benefit or publishing ingredient claims, use the exact current product label as the source of truth. Keep price, quantity, directions and caution information aligned with the physical packaging.
 
@@ -106,7 +106,22 @@ Store Studio provides email/password login, friendly product editing, image gall
 3. Add `FIREBASE_PROJECT_ID` and `FIREBASE_SERVICE_ACCOUNT_JSON` as private Netlify environment variables. Put only public Web App configuration in `firebase-config.js`.
 4. Set the required Netlify variables for Paystack, Resend and the canonical `SITE_URL`. Configure a verified Resend sending domain and the Paystack webhook at `https://YOUR-DOMAIN/.netlify/functions/paystack-webhook`.
 5. Configure Cloudinary credentials if the owner will upload custom product images from Store Studio.
-6. Confirm the visible prices and packaging quantities with the current product labels, enter the actual opening stock figures if inventory tracking is enabled, and save the approved ingredients/directions for the products that need them.
+6. Confirm the visible prices and packaging quantities with the current product labels, enter the actual opening stock figures if inventory tracking is enabled and save the approved ingredients/directions for the products that need them.
 7. Test delivery and pickup on a Wednesday/Thursday/Friday/Saturday transition, successful and failed Paystack test transactions, order confirmation emails, status-change emails, newsletter/contact submissions and the admin experience on a phone and desktop. Switch to live payment credentials only after those checks pass.
 
 **Provider setup is required before live transactions and emails can run.** The repository includes the integration code, but Firebase, Paystack, Resend and Cloudinary must be configured with the owner's production accounts and tested on the deployed Netlify site.
+
+
+## Search engine setup
+
+The public pages include page-specific descriptions, canonical URLs, social preview metadata and structured data. The product page updates its title, description and Product JSON-LD using the current catalogue, including products added through the admin dashboard. The public sitemap is served at `/sitemap.xml` and the crawler rules are served at `/robots.txt`. The sitemap includes public shop pages and active product URLs; the private admin, cart, checkout and confirmation pages are excluded.
+
+After the site is deployed to its final HTTPS domain:
+
+1. Set `SITE_URL` in Netlify to the exact public origin, for example `https://www.example.com`, without a trailing slash.
+2. Open `https://your-domain/sitemap.xml` and confirm it returns valid XML with the final domain.
+3. Open `https://your-domain/robots.txt` and confirm it points to that sitemap.
+4. Add the final domain property in Google Search Console, complete Google's ownership verification and submit `/sitemap.xml`.
+5. Use URL Inspection and Google's Rich Results Test to check important pages. Search appearances and indexing are decided by Google and are not guaranteed simply by adding SEO metadata.
+
+Product structured data is generated client-side because the storefront is a static app backed by a live catalogue. Google recommends including product markup in initial HTML where feasible, so validate the deployed product pages and their price and availability data after launch. See [Google's sitemap guidance](https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap) and [Product structured data guidance](https://developers.google.com/search/docs/appearance/structured-data/product).

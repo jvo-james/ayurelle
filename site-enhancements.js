@@ -12,8 +12,10 @@
     return (images.products && images.products[product.slug]) || images.detailAccent || 'images/ayurelle-mark.svg';
   };
   const productPrice = product => {
-    if (Array.isArray(product.variants) && product.variants.length) return Math.min(...product.variants.map(v => Number(v.price) || 0));
-    return Number(product.price) || 0;
+    const prices = Array.isArray(product?.variants) ? product.variants.map(variant => Number(variant?.price)).filter(price => Number.isFinite(price) && price >= 0) : [];
+    if (prices.length) return Math.min(...prices);
+    const price = Number(product?.price);
+    return Number.isFinite(price) && price >= 0 ? price : 0;
   };
 
   function setupHeaderSearch(header) {
@@ -24,10 +26,10 @@
     shell.className = 'header-search-shell';
     shell.dataset.globalSearch = '';
     shell.innerHTML = `
-      <div class="header-search-panel" role="search" aria-label="Search Ayurélle products">
+      <div class="header-search-panel" role="search" aria-label="Search Ayurèlle products">
         <div class="header-search-field"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input type="search" data-global-search-input placeholder="Search products, sets and essentials…" autocomplete="off" aria-label="Search products"><button type="button" class="search-close" data-search-close aria-label="Close product search"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19"/></svg></button></div>
         <div class="header-search-results" data-global-search-results><p class="search-prompt"><span class="search-prompt-mark"><i class="fa-solid fa-sparkles" aria-hidden="true"></i></span><span><strong>Find your next favourite</strong><small>Search by product name or category.</small></span></p></div>
-        <div class="header-search-bottom"><span>AYURÉLLE ORGANICS</span><a href="shop.html">Browse the full collection <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></div>
+        <div class="header-search-bottom"><span>AYURÈLLE ORGANICS</span><a href="shop.html">Browse the full collection <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></div>
       </div>`;
     header.appendChild(shell);
     const input = shell.querySelector('[data-global-search-input]');
@@ -50,7 +52,7 @@
         results.innerHTML = `<div class="search-no-results"><span><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i></span><strong>No matches just yet</strong><small>Try a different product name.</small></div>`;
         return;
       }
-      results.innerHTML = `<p class="search-results-label">${found.length} ${found.length === 1 ? 'MATCH' : 'MATCHES'} FOR “${escapeHTML(term)}”</p>${found.map(product => `<a class="search-result" href="product.html?slug=${encodeURIComponent(product.slug)}"><span class="search-result-image"><img src="${escapeHTML(productImage(product))}" alt="" loading="lazy"></span><span class="search-result-copy"><strong>${escapeHTML(product.name)}</strong><small>${escapeHTML(product.short || product.category || 'Ayurélle Organics')}</small></span><span class="search-result-price">${money(productPrice(product))}<i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></span></a>`).join('')}`;
+      results.innerHTML = `<p class="search-results-label">${found.length} ${found.length === 1 ? 'MATCH' : 'MATCHES'} FOR “${escapeHTML(term)}”</p>${found.map(product => `<a class="search-result" href="/products/${encodeURIComponent(product.slug)}"><span class="search-result-image"><img src="${escapeHTML(productImage(product))}" alt="" loading="lazy"></span><span class="search-result-copy"><strong>${escapeHTML(product.name)}</strong><small>${escapeHTML(product.short || product.category || 'Ayurèlle Organics')}</small></span><span class="search-result-price">${money(productPrice(product))}<i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></span></a>`).join('')}`;
     };
     toggle.addEventListener('click', () => {
       const opening = !shell.classList.contains('is-open');

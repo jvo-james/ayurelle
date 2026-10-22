@@ -23,6 +23,24 @@
   [headers.values]
     Cache-Control = "no-store"
 
+[[redirects]]
+  from = "/products/:slug"
+  to = "/product.html?slug=:slug"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/sitemap.xml"
+  to = "/.netlify/functions/sitemap"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/robots.txt"
+  to = "/.netlify/functions/robots"
+  status = 200
+  force = true
+
 # Prevent accidental exposure of server-side source and local configuration
 # when the repository root is used as the static publish directory.
 [[redirects]]

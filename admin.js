@@ -517,6 +517,7 @@ function renderSubscribers() {
   const tbody = $('[data-subscribers-table]'); if (!tbody) return;
   $('[data-subscriber-count]').textContent = subscribers.length;
   $('[data-subscriber-active]').textContent = subscribers.filter(s => s.status === 'subscribed').length;
+  const campaignCount = $('[data-campaign-recipient-count]'); if (campaignCount) campaignCount.textContent = subscribers.filter(s => s.status === 'subscribed').length.toLocaleString('en-GH');
   tbody.innerHTML = subscribers.length ? subscribers.map(sub => `<tr><td><strong>${esc(sub.email)}</strong></td><td>${esc(sub.source || 'Website')}</td><td>${fmtDate(sub.subscribedAt)}</td><td>${fulfillmentPill(sub.status || 'subscribed')}</td><td><button class="admin-row-action" type="button" data-toggle-subscriber="${esc(sub.id)}" data-next-status="${sub.status === 'subscribed' ? 'unsubscribed' : 'subscribed'}" aria-label="Toggle subscription"><i class="fa-solid ${sub.status === 'subscribed' ? 'fa-user-minus' : 'fa-user-plus'}"></i></button></td></tr>`).join('') : '<tr><td colspan="5"><div class="admin-empty-table">No newsletter subscribers yet.</div></td></tr>';
 }
 function renderSetupChecklist() {
@@ -555,6 +556,11 @@ function fillProductForm(product = null) {
   const form = $('[data-product-form]');
   form.reset();
   editingProductSlug = product?.slug || null;
+  const productDialog = $('[data-product-dialog]');
+  productDialog.dataset.mode = product ? 'edit' : 'create';
+  $('[data-product-preview-card]')?.toggleAttribute('hidden', !product);
+  $('[data-new-product-note]')?.toggleAttribute('hidden', !!product);
+  $('[data-repository-image-option]')?.toggleAttribute('hidden', !product);
   draftImages = product && !product.useRepositoryImages ? [...(product.images || (product.imageUrl ? [product.imageUrl] : []))] : [];
   populateProductCategoryFilter();
   const title = $('[data-product-dialog-title]');
@@ -565,7 +571,7 @@ function fillProductForm(product = null) {
   set('price', product?.price ?? ''); set('size', product?.size || ''); set('stock', product?.stock ?? 0); set('lowStockThreshold', product?.lowStockThreshold ?? 5);
   set('active', String(product?.active !== false)); form.elements.trackInventory.checked = !!product?.trackInventory;
   set('short', product?.short || ''); set('description', product?.description || ''); set('ingredients', product?.ingredients || ''); set('directions', product?.directions || ''); set('sizeDetail', product?.sizeDetail || ''); set('texture', product?.texture || ''); set('scent', product?.scent || ''); set('badge', product?.badge || ''); set('caution', product?.caution || ''); set('highlights', (product?.highlights || []).join('\n')); set('contains', (product?.contains || []).map(item => typeof item === 'string' ? item : item.slug).join('\n'));
-  set('images', draftImages.join('\n')); form.elements.useRepositoryImages.checked = product ? !!product.useRepositoryImages : true;
+  set('images', draftImages.join('\n')); form.elements.useRepositoryImages.checked = product ? !!product.useRepositoryImages : false;
   set('variantsJson', JSON.stringify(product?.variants || [], null, 2));
   const imageVariants = product?.imageVariants || (product && window.AYURELLE_IMAGES?.variants?.[product.slug]) || {};
   set('imageVariantsJson', JSON.stringify(imageVariants, null, 2));
@@ -627,7 +633,7 @@ function updateProductPreview() {
 function renderDraftImages() {
   const grid = $('[data-image-grid]'); if (!grid) return;
   updateProductPreview();
-  grid.innerHTML = draftImages.length ? draftImages.map((url,index) => `<figure class="admin-image-preview"><img src="${esc(url)}" alt="Uploaded product view ${index+1}" loading="lazy"><span>Image ${index+1}${index === 0 ? ' · Cover' : ''}</span><button type="button" data-remove-image="${index}" aria-label="Remove image ${index+1}"><i class="fa-solid fa-xmark"></i></button></figure>`).join('') : '<div class="admin-image-empty"><i class="fa-regular fa-images"></i><span>No custom images selected. Repository imagery will be used if enabled.</span></div>';
+  grid.innerHTML = draftImages.length ? draftImages.map((url,index) => `<figure class="admin-image-preview"><img src="${esc(url)}" alt="Uploaded product view ${index+1}" loading="lazy"><span>Image ${index+1}${index === 0 ? ' · Cover' : ''}</span><button type="button" data-remove-image="${index}" aria-label="Remove image ${index+1}"><i class="fa-solid fa-xmark"></i></button></figure>`).join('') : `<div class="admin-image-empty"><i class="fa-regular fa-images"></i><span>${editingProductSlug ? 'No custom images selected. Existing repository imagery can be kept for this product.' : 'Upload at least one product photo to finish creating this listing.'}</span></div>`;
   $('[data-product-form]').elements.images.value = draftImages.join('\n');
 }
 async function getUploadSignature(file) {
@@ -692,13 +698,14 @@ function saveProduct(event) {
     setMessage('[data-product-form-feedback]', 'Saving your product…');
     try {
       const raw = parseJsonField(form.elements.advancedJson.value, {}, 'Entire product document');
-      const variants = parseJsonField(form.elements.variantsJson.value, [], 'Size variants');
+      const parsedVariants = parseJsonField(form.elements.variantsJson.value, [], 'Size variants');
+      const variants = editingProductSlug && Array.isArray(parsedVariants) ? parsedVariants.filter(variant => variant && String(variant.id || '').trim() && String(variant.label || '').trim() && Number.isFinite(Number(variant.price)) && Number(variant.price) >= 0) : [];
       const imageVariants = parseJsonField(form.elements.imageVariantsJson.value, {}, 'Colour variant images');
       if (!Array.isArray(variants)) throw new Error('Size variants JSON must be an array.');
       if (typeof imageVariants !== 'object' || Array.isArray(imageVariants)) throw new Error('Colour variant images JSON must be an object.');
       const slug = slugify(form.elements.slug.value);
       if (!slug) throw new Error('Enter a valid product slug.');
-      const useRepositoryImages = form.elements.useRepositoryImages.checked;
+      const useRepositoryImages = !!editingProductSlug && form.elements.useRepositoryImages.checked;
       const images = useRepositoryImages ? [] : [...new Set(draftImages.length ? draftImages : String(form.elements.images.value || '').split('\n').map(v => v.trim()).filter(Boolean))];
       for (const url of images) if (!/^https:\/\//i.test(url)) throw new Error('Every custom image URL must start with https://.');
       const product = {
@@ -708,14 +715,15 @@ function saveProduct(event) {
         stock: Math.max(0, Number(form.elements.stock.value) || 0), lowStockThreshold: Math.max(0, Number(form.elements.lowStockThreshold.value) || 0),
         active: form.elements.active.value === 'true', trackInventory: form.elements.trackInventory.checked,
         short: form.elements.short.value.trim(), description: form.elements.description.value.trim(),
-        ingredients: ['derma-roller', 'satin-bonnet', 'steaming-cap'].includes(slugify(form.elements.slug.value)) ? '' : form.elements.ingredients.value.trim(), directions: form.elements.directions.value.trim(),
+        ingredients: form.elements.ingredients.value.trim(), directions: form.elements.directions.value.trim(),
         sizeDetail: form.elements.sizeDetail.value.trim(), texture: form.elements.texture.value.trim(), scent: form.elements.scent.value.trim(), badge: form.elements.badge.value.trim(), caution: form.elements.caution.value.trim(),
         highlights: form.elements.highlights.value.split('\n').map(v => v.trim()).filter(Boolean),
         contains: form.elements.contains.value.split('\n').map(v => v.trim()).filter(Boolean).map(value => ({ slug: value })),
         variants, imageVariants, images, imageUrl: images[0] || '', useRepositoryImages,
         contentReviewVersion: 3, updatedAt: serverTimestamp()
       };
-      if (!product.name || !product.short || !product.description || !Number.isFinite(product.price) || product.price < 0) throw new Error('Please complete the required name, description and price fields.');
+      if (!product.name || !product.short || !product.description || !product.size || !Number.isFinite(product.price) || product.price < 0) throw new Error('Please complete the required name, pack size or quantity, description and price fields.');
+      if (!editingProductSlug && images.length === 0) throw new Error('Upload at least one clear product photo before saving a new product.');
       if (slug !== editingProductSlug && products.some(p => p.slug === slug)) throw new Error('That product slug already exists. Choose a unique slug.');
       if (editingProductSlug && slug !== editingProductSlug) {
         const batch = writeBatch(db); batch.set(doc(db, 'products', slug), { ...product, createdAt: raw.createdAt || serverTimestamp() }); batch.delete(doc(db, 'products', editingProductSlug)); await batch.commit();
@@ -871,6 +879,37 @@ async function saveSignInDetails(event) {
   } finally { setBusy(button, false); }
 }
 
+async function sendSubscriberCampaign(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const button = form.querySelector('[data-send-subscriber-campaign]');
+  const activeCount = subscribers.filter(item => item.status === 'subscribed').length;
+  if (!activeCount) { setMessage('[data-subscriber-campaign-feedback]', 'There are no active subscribers to email yet.', true); return; }
+  const subject = form.elements.subject.value.trim();
+  const headline = form.elements.headline.value.trim();
+  const message = form.elements.message.value.trim();
+  if (!subject || !headline || message.length < 5) { setMessage('[data-subscriber-campaign-feedback]', 'Add an email subject, headline and message before sending.', true); return; }
+  if (!confirm(`Send this email to all ${activeCount} active subscriber${activeCount === 1 ? '' : 's'}? Only subscribers will receive it. The store admin will not be copied.`)) return;
+  setBusy(button, true, 'Sending campaign…');
+  setMessage('[data-subscriber-campaign-feedback]', `Preparing your email for ${activeCount} subscriber${activeCount === 1 ? '' : 's'}…`);
+  try {
+    const token = await getIdToken(currentUser, true);
+    const response = await fetch('/.netlify/functions/newsletter-campaign', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ subject, headline, message, buttonLabel: form.elements.buttonLabel.value.trim(), buttonPath: form.elements.buttonPath.value.trim() })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || 'The email campaign could not be sent. Please try again.');
+    setMessage('[data-subscriber-campaign-feedback]', data.message || `Your email has been sent to ${data.sent || activeCount} subscribers.`);
+    toast(data.message || 'Subscriber email sent.');
+    form.elements.message.value = '';
+  } catch (error) {
+    setMessage('[data-subscriber-campaign-feedback]', friendlyError(error, 'The email could not be sent. Please check your connection and email settings.'), true);
+    toast(error.message || 'Email campaign failed.', 'error');
+  } finally { setBusy(button, false); }
+}
+
 function downloadCSV(filename, rows) {
   const csv = rows.map(row => row.map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
   const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob);
@@ -891,6 +930,12 @@ function exportSubscribers() {
 }
 
 function bindEvents() {
+  // Clicking the dimmed area around any drawer closes that drawer.
+  $$('.admin-dialog').forEach(dialog => dialog.addEventListener('click', event => {
+    if (event.target !== dialog) return;
+    const rect = dialog.getBoundingClientRect();
+    if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close();
+  }));
   $('[data-login-form]').addEventListener('submit', async event => {
     event.preventDefault(); const form = event.currentTarget; const button = form.querySelector('[type="submit"]');
     if (!configReady()) { setMessage('[data-login-message]', 'Sign-in is not ready yet. Please contact the person who set up your store.', true); return; }
@@ -911,6 +956,7 @@ function bindEvents() {
   $$('[data-close-order]').forEach(button => button.addEventListener('click', () => $('[data-order-dialog]').close()));
   $$('[data-close-message-reply]').forEach(button => button.addEventListener('click', () => $('[data-message-reply-dialog]').close()));
   $('[data-message-reply-form]').addEventListener('submit', sendMessageReply);
+  $('[data-subscriber-campaign-form]')?.addEventListener('submit', sendSubscriberCampaign);
   $$('[data-close-category]').forEach(button => button.addEventListener('click', () => $('[data-category-dialog]').close()));
   $('[data-product-form]').addEventListener('submit', saveProduct);
   $('[data-delete-product]').addEventListener('click', deleteProduct);

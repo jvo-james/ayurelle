@@ -1,5 +1,5 @@
 /*
-  AYURÉLLE ORGANICS IMAGE LIBRARY
+  AYURÈLLE ORGANICS IMAGE LIBRARY
   Change images here. Product page, shop cards, set-content drawers, the round
   header logo and browser icon all read from this file.
   Product and brand images used across the storefront.

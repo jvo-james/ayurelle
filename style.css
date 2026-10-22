@@ -797,7 +797,7 @@ a.contact-method:hover .contact-method-icon { color: var(--forest); background: 
 }
 
 /* --------------------------------------------------------------------------
-   Ayurélle polish pass: responsive fixed header, animated search and galleries
+   Ayurèlle polish pass: responsive fixed header, animated search and galleries
    -------------------------------------------------------------------------- */
 .site-header {
   position: fixed;
@@ -1171,3 +1171,26 @@ body:not([data-page="home"]) { padding-top: var(--header-height); }
   .header-actions { gap: 4px; }
   .header-search, .cart-link { width: 34px; height: 36px; }
 }
+
+
+/* Mobile-first editorial treatment for the home-page favourite categories */
+@media (max-width: 760px) {
+  .section-collection .category-card { border-radius: 17px; box-shadow: 0 9px 24px rgba(12,30,17,.12); }
+  .section-collection .category-card img { transform: scale(1.015); }
+  .section-collection .category-card::after { background: linear-gradient(0deg,rgba(7,24,14,.4) 0%,rgba(7,24,14,.02) 45%,rgba(7,24,14,.08) 100%); }
+  .section-collection .category-info { right: 10px; bottom: 10px; left: 10px; display:flex; align-items:center; min-height:0; gap:11px; padding:13px 13px 13px 15px; border:1px solid rgba(255,253,247,.3); border-radius:13px; background:linear-gradient(120deg,rgba(17,51,32,.91),rgba(20,47,30,.75)); box-shadow:0 8px 22px rgba(0,0,0,.16); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); }
+  .section-collection .category-info > span { min-width:0; gap:4px; }
+  .section-collection .category-info strong { display:block; color:#fffdf7; font-size:clamp(15px,4.2vw,20px); line-height:1.15; letter-spacing:-.025em; text-wrap:balance; }
+  .section-collection .category-info > i { display:grid; place-items:center; width:35px; height:35px; flex:0 0 35px; border:1px solid rgba(237,219,155,.75); border-radius:50%; color:#f4e5ad; background:rgba(255,253,247,.06); font-size:10px; }
+  .section-collection .category-card:hover .category-info > i { color:#183a25; background:#e7d69a; border-color:#e7d69a; }
+  .section-collection .category-tall .category-info { padding:15px 15px 15px 17px; }
+  .section-collection .category-tall .category-info strong { font-size:clamp(18px,5vw,23px); }
+}
+@media (max-width: 390px) {
+  .section-collection .category-info { right:8px; bottom:8px; left:8px; gap:8px; padding:11px 10px 11px 12px; }
+  .section-collection .category-info strong { font-size:15px; }
+  .section-collection .category-info > i { width:31px; height:31px; flex-basis:31px; }
+}
+
+/* Dynamic product detail sections stay hidden until they have published content. */
+.details-section[hidden] { display: none !important; }

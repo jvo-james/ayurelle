@@ -14,7 +14,7 @@ window.AYURELLE_FIREBASE_CONFIG = {
 };
 
 /* Informational admin contact list only. Actual access is controlled by the
-   admins/{uid} Firestore membership document or admin custom claim, and by
+   admins/{uid} Firestore membership document or admin custom claim and by
    the matching server-side ADMIN_EMAILS environment variable. */
 window.AYURELLE_ADMIN_CONFIG = {
   adminEmails: ['jadelstech@gmail.com']

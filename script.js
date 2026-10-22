@@ -16,7 +16,7 @@
     {
       slug: 'full-hair-growth-set', name: 'Full Hair Growth Set', category: 'sets', price: 500, size: '9-piece set', badge: 'Complete care set',
       short: 'A complete collection for cleansing, conditioning, moisture and scalp care.',
-      description: 'The Full Hair Growth Set brings nine Ayurélle essentials together in one coordinated collection. It includes wash-day staples, a protein mask, oil, butter, herbal hair tea and a scalp mist, giving you a practical starting point for a consistent hair-care routine.',
+      description: 'The Full Hair Growth Set brings nine Ayurèlle essentials together in one coordinated collection. It includes wash-day staples, a protein mask, oil, butter, herbal hair tea and a scalp mist, giving you a practical starting point for a consistent hair-care routine.',
       ingredients: '',
       directions: "Use each item in the set according to its own product directions. On wash day, cleanse first, then choose the conditioner or treatment best suited to your routine. Apply leave-in products and styling moisturisers in small amounts as directed.",
       sizeDetail: 'A coordinated nine-piece routine with full-size essentials.',
@@ -230,18 +230,21 @@
     return (IMAGES.products && IMAGES.products[slug]) || IMAGES.detailAccent || IMAGES.brandStory || '';
   };
   const defaultColorFor = slug => (IMAGES.variants && IMAGES.variants[slug] && IMAGES.variants[slug].default) || null;
-  const defaultSizeFor = product => product && product.variants ? product.variants[0] : null;
-  const minPriceFor = product => product.variants ? Math.min(...product.variants.map(variant => variant.price)) : product.price;
-  const maxPriceFor = product => product.variants ? Math.max(...product.variants.map(variant => variant.price)) : product.price;
-  const cardPrice = product => product.variants ? `From ${currency(minPriceFor(product))}` : currency(product.price);
+  const sizeVariantsFor = product => Array.isArray(product?.variants) ? product.variants.filter(variant => variant && String(variant.id || '').trim() && String(variant.label || '').trim() && Number.isFinite(Number(variant.price)) && Number(variant.price) >= 0) : [];
+  const hasSizeVariants = product => sizeVariantsFor(product).length > 0;
+  const defaultSizeFor = product => sizeVariantsFor(product)[0] || null;
+  const basePriceFor = product => { const price = Number(product?.price); return Number.isFinite(price) && price >= 0 ? price : 0; };
+  const minPriceFor = product => { const prices = sizeVariantsFor(product).map(variant => Number(variant.price)); return prices.length ? Math.min(...prices) : basePriceFor(product); };
+  const maxPriceFor = product => { const prices = sizeVariantsFor(product).map(variant => Number(variant.price)); return prices.length ? Math.max(...prices) : basePriceFor(product); };
+  const cardPrice = product => hasSizeVariants(product) ? `From ${currency(minPriceFor(product))}` : currency(basePriceFor(product));
   const cardSize = product => {
-    if (product.variants) return product.variants.map(variant => variant.label).reverse().join(' and ');
+    if (hasSizeVariants(product)) return sizeVariantsFor(product).map(variant => variant.label).reverse().join(' and ');
     if (product.colorOptions) return product.slug === 'satin-bonnet' ? 'Four colours' : 'Two colours';
-    return product.size || '';
+    return product.size || product.sizeDetail || '';
   };
-  const categoryLabel = product => CATEGORY_LABELS[product.category] || 'Ayurélle Organics';
+  const categoryLabel = product => CATEGORY_LABELS[product.category] || 'Ayurèlle Organics';
   const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
-  const productHref = slug => `product.html?slug=${encodeURIComponent(slug)}`;
+  const productHref = slug => `/products/${encodeURIComponent(slug)}`;
 
   function applyBrandImages() {
     document.querySelectorAll('[data-image]').forEach(img => {
@@ -351,10 +354,10 @@
         <span class="product-card-open" aria-hidden="true"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>
       </a>
       <div class="product-card-copy">
-        <div class="product-card-topline">${product.variants ? `<span>${escapeHtml(sizeText)}</span>` : ''}</div>
+        <div class="product-card-topline">${hasSizeVariants(product) ? `<span>${escapeHtml(sizeText)}</span>` : ''}</div>
         <a class="product-card-title" href="${productHref(product.slug)}">${escapeHtml(product.name)}</a>
         <p class="product-card-description">${escapeHtml(product.short)}</p>
-        <div class="product-card-price-line"><span>${escapeHtml(priceText)}</span>${!product.variants && !product.colorOptions ? `<small>${escapeHtml(product.size || '')}</small>` : ''}</div>
+        <div class="product-card-price-line"><span>${escapeHtml(priceText)}</span>${!hasSizeVariants(product) && !product.colorOptions ? `<small>${escapeHtml(product.size || product.sizeDetail || '')}</small>` : ''}</div>
         <div class="product-card-bottom">${renderSwatches(product, 'card', defaultColor)}<a class="product-view-link" href="${productHref(product.slug)}">View details <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></div>
       </div>
     </article>`;
@@ -454,15 +457,17 @@
   }
 
   function chosenSize(product, id) {
-    if (!product || !product.variants) return null;
-    return product.variants.find(variant => variant.id === id) || product.variants[0];
+    const variants = sizeVariantsFor(product);
+    if (!variants.length) return null;
+    return variants.find(variant => variant.id === id) || variants[0];
   }
 
   function renderOptions(product, source = 'detail', selectedSize = null, selectedColor = null) {
     const currentSize = selectedSize || defaultSizeFor(product);
     let html = '';
-    if (product.variants) {
-      html += `<div class="option-block"><label class="option-heading" for="${source}SizeSelect"><span>Size</span><span>Choose a size</span></label><select id="${source}SizeSelect" class="option-select" data-${source}-size data-product-slug="${escapeHtml(product.slug)}">${product.variants.map(variant => `<option value="${escapeHtml(variant.id)}" ${currentSize && currentSize.id === variant.id ? 'selected' : ''}>${escapeHtml(variant.label)} · ${currency(variant.price)}</option>`).join('')}</select></div>`;
+    const variants = sizeVariantsFor(product);
+    if (variants.length) {
+      html += `<div class="option-block"><label class="option-heading" for="${source}SizeSelect"><span>Size</span><span>Choose a size</span></label><select id="${source}SizeSelect" class="option-select" data-${source}-size data-product-slug="${escapeHtml(product.slug)}">${variants.map(variant => `<option value="${escapeHtml(variant.id)}" ${currentSize && currentSize.id === variant.id ? 'selected' : ''}>${escapeHtml(variant.label)} · ${currency(variant.price)}</option>`).join('')}</select></div>`;
     } else if (!product.colorOptions && product.size) {
       html += `<div class="option-block"><div class="option-heading"><span>Size or quantity</span><span>${escapeHtml(product.size)}</span></div></div>`;
     }
@@ -492,7 +497,7 @@
     currentGalleryImages = galleryFor(slug, color);
     currentGalleryIndex = Math.min(Math.max(0, chosenIndex), Math.max(0, currentGalleryImages.length - 1));
     mainImage.src = currentGalleryImages[currentGalleryIndex] || imageFor(slug, color);
-    mainImage.alt = `${currentProduct ? currentProduct.name : 'Ayurélle product'} product view ${currentGalleryIndex + 1}`;
+    mainImage.alt = `${currentProduct ? currentProduct.name : 'Ayurèlle product'} product view ${currentGalleryIndex + 1}`;
     setText('[data-gallery-index]', `${currentGalleryIndex + 1} / ${Math.max(1, currentGalleryImages.length)}`);
     if (thumbnails) {
       thumbnails.innerHTML = currentGalleryImages.length > 1 ? currentGalleryImages.map((src, index) => `<button type="button" class="gallery-thumb${index === currentGalleryIndex ? ' is-active' : ''}" data-gallery-index-button="${index}" aria-label="View product image ${index + 1}" aria-pressed="${index === currentGalleryIndex}"><img src="${escapeHtml(src)}" alt="" loading="lazy"></button>`).join('') : '';
@@ -523,7 +528,7 @@
       const item = bySlug.get(entry.slug);
       if (!item) return '';
       const label = entry.label || item.name;
-      const size = item.variants ? item.variants.map(variant => variant.label).join(' / ') : item.size;
+      const size = hasSizeVariants(item) ? sizeVariantsFor(item).map(variant => variant.label).join(' / ') : item.size;
       return `<button type="button" class="set-item-card" data-open-product="${escapeHtml(item.slug)}" aria-label="View details for ${escapeHtml(label)}">
         <span class="set-item-image"><img src="${escapeHtml(imageFor(item.slug, defaultColorFor(item.slug)))}" alt="${escapeHtml(label)}" loading="lazy"></span>
         <span class="set-item-copy"><span class="set-item-number">ITEM ${index + 1}</span><strong>${escapeHtml(label)}</strong><small>${escapeHtml(size || categoryLabel(item))} · ${escapeHtml(cardPrice(item))}</small></span>
@@ -547,8 +552,13 @@
     const detail = document.querySelector('[data-product-detail]');
     if (!detail) return;
     const params = new URLSearchParams(window.location.search);
-    const slug = params.get('slug') || 'full-hair-growth-set';
+    const pathProductSlug = window.location.pathname.match(/^\/products\/([^/]+)\/?$/)?.[1];
+    let decodedPathSlug = '';
+    try { decodedPathSlug = pathProductSlug ? decodeURIComponent(pathProductSlug) : ''; } catch { decodedPathSlug = ''; }
+    const slug = params.get('slug') || decodedPathSlug || 'full-hair-growth-set';
     currentProduct = bySlug.get(slug) || bySlug.get('full-hair-growth-set');
+    const backToTopLink = document.querySelector('.back-to-top');
+    if (backToTopLink) { const topUrl = new URL(window.location.href); topUrl.hash = 'siteHeader'; backToTopLink.href = `${topUrl.pathname}${topUrl.search}${topUrl.hash}`; }
     currentSizeVariant = defaultSizeFor(currentProduct)?.id || null;
     currentColor = defaultColorFor(currentProduct.slug);
     currentQty = 1;
@@ -557,8 +567,7 @@
     setText('[data-product-breadcrumb]', currentProduct.name);
     setText('[data-product-category]', '');
     const ingredientSection = document.querySelector('[data-ingredients-section]');
-    const neverShowIngredients = ['derma-roller', 'satin-bonnet', 'steaming-cap'].includes(currentProduct.slug);
-    if (ingredientSection) ingredientSection.hidden = neverShowIngredients || !String(currentProduct.ingredients || '').trim();
+    if (ingredientSection) ingredientSection.hidden = !String(currentProduct.ingredients || '').trim();
     setText('[data-product-title]', currentProduct.name);
     setText('[data-product-short]', currentProduct.short);
     setText('[data-product-description]', currentProduct.description);
@@ -566,11 +575,15 @@
     setText('[data-product-ingredients]', currentProduct.ingredients || '');
     setText('[data-product-directions]', currentProduct.directions);
     setText('[data-product-caution]', currentProduct.caution);
+    const directionsSection = document.querySelector('[data-directions-section]');
+    const cautionSection = document.querySelector('[data-caution-section]');
+    if (directionsSection) directionsSection.hidden = !String(currentProduct.directions || '').trim();
+    if (cautionSection) cautionSection.hidden = !String(currentProduct.caution || '').trim();
     setText('[data-product-qty]', '1');
     setText('[data-gallery-index]', currentProduct.colorOptions ? `1 / ${Object.keys((IMAGES.variants[currentProduct.slug] || {}).colors || {}).length}` : '1 / 1');
-    document.title = `${currentProduct.name} | Ayurélle Organics`;
+    document.title = `${currentProduct.name} | Ayurèlle Organics`;
     const titleMeta = document.querySelector('meta[property="og:title"]');
-    if (titleMeta) titleMeta.content = `${currentProduct.name} | Ayurélle Organics`;
+    if (titleMeta) titleMeta.content = `${currentProduct.name} | Ayurèlle Organics`;
     const shortMeta = document.querySelector('meta[name="description"]');
     if (shortMeta) shortMeta.content = currentProduct.short;
     const detailOptions = document.querySelector('[data-product-options]');
@@ -584,7 +597,7 @@
     if (highlights) highlights.innerHTML = (currentProduct.highlights || []).map(item => `<div class="benefit-item"><i class="fa-solid fa-check" aria-hidden="true"></i><span>${escapeHtml(item)}</span></div>`).join('');
     const whatsapp = document.querySelector('[data-product-whatsapp]');
     if (whatsapp) {
-      const message = encodeURIComponent(`Hello Ayurélle Organics, I have a question about ${currentProduct.name}.`);
+      const message = encodeURIComponent(`Hello Ayurèlle Organics, I have a question about ${currentProduct.name}.`);
       whatsapp.href = `https://wa.me/${BUSINESS_PHONE}?text=${message}`;
     }
     updateDetailPrice();
@@ -808,7 +821,7 @@
         return `- ${item.name}${options ? ` (${options})` : ''} x ${item.qty}: ${currency(item.price * item.qty)}`;
       });
       const message = [
-        'Hello Ayurélle Organics, I would like to confirm this order.',
+        'Hello Ayurèlle Organics, I would like to confirm this order.',
         '', 'CUSTOMER DETAILS', `Name: ${name}`, `Phone: ${phone}`, email ? `Email: ${email}` : '',
         '', 'DELIVERY', `Preferred option: ${delivery}`, `Address or area: ${address}`, notes ? `Notes: ${notes}` : '',
         '', 'ORDER', ...lines, '', `Subtotal: ${currency(cartSubtotal(cart))}`,
@@ -830,9 +843,9 @@
       const email = String(data.get('email') || '').trim();
       const topic = String(data.get('topic') || '').trim();
       const message = String(data.get('message') || '').trim();
-      const body = `Hello Ayurélle Organics, my name is ${name}.\nEmail: ${email}\nEnquiry: ${topic}\n\n${message}`;
+      const body = `Hello Ayurèlle Organics, my name is ${name}.\nEmail: ${email}\nEnquiry: ${topic}\n\n${message}`;
       const feedback = document.querySelector('[data-contact-feedback]');
-      if (feedback) feedback.textContent = 'Opening WhatsApp. Review your message and send it to Ayurélle.';
+      if (feedback) feedback.textContent = 'Opening WhatsApp. Review your message and send it to Ayurèlle.';
       window.open(`https://wa.me/${BUSINESS_PHONE}?text=${encodeURIComponent(body)}`, '_blank', 'noopener,noreferrer');
     });
   }
@@ -925,6 +938,10 @@
       const merged = payload.products.filter(item => item && item.slug && item.active !== false).map(remote => {
         const base = localBySlug.get(remote.slug) || {};
         const normalized = { ...base, ...remote };
+        const remoteVariants = Array.isArray(normalized.variants) ? normalized.variants.filter(variant => variant && String(variant.id || '').trim() && String(variant.label || '').trim() && Number.isFinite(Number(variant.price)) && Number(variant.price) >= 0) : [];
+        if (remoteVariants.length) normalized.variants = remoteVariants; else delete normalized.variants;
+        normalized.price = Number.isFinite(Number(normalized.price)) && Number(normalized.price) >= 0 ? Number(normalized.price) : 0;
+        normalized.size = String(normalized.size || normalized.sizeDetail || 'Standard size').trim();
         if (normalized.slug === 'ayur-hair-growth-oil') { delete normalized.variants; normalized.size = '100 ml'; normalized.sizeDetail = '100 ml'; }
         if (normalized.slug === 'ayur-hair-growth-butter') { delete normalized.variants; normalized.size = '250 ml'; normalized.sizeDetail = '250 ml'; }
         if (normalized.slug === 'ayur-silk-protein-mask') { delete normalized.variants; normalized.name = 'Prodiva Protein Mask'; normalized.size = '250 ml'; normalized.sizeDetail = '250 ml'; }
@@ -932,8 +949,7 @@
         if (normalized.slug === 'ayur-leave-in-conditioner') { normalized.size = '250 ml'; normalized.sizeDetail = '250 ml'; }
         if (normalized.slug === 'ayur-hair-tea') { normalized.size = '200 g'; normalized.sizeDetail = '200 g botanical blend'; }
         if (normalized.slug === 'ayur-scalp-detox-mist') normalized.name = 'Rosemary Water Spray';
-        if (['derma-roller', 'satin-bonnet', 'steaming-cap'].includes(normalized.slug)) normalized.ingredients = '';
-        if (remote.useRepositoryImages) {
+                if (remote.useRepositoryImages) {
           if (base.slug && IMAGES.products && IMAGES.products[base.slug]) IMAGES.products[remote.slug] = IMAGES.products[base.slug];
         } else if (Array.isArray(remote.images) && remote.images.length) {
           IMAGES.products[remote.slug] = remote.images[0];
