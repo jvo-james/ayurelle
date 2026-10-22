@@ -19,9 +19,17 @@ export default async request => {
     await ref.update({ status, updatedAt: FieldValue.serverTimestamp(), statusUpdatedBy: admin.email || admin.uid });
     const updated = { ...order, reference, status };
     let emailFailed = false;
-    if (order.customer?.email) {
+    // Status changes notify the customer only. Do not add the store/admin
+    // notification address, CC, or BCC here. Admin order emails are reserved
+    // for new paid orders in the checkout confirmation flow.
+    const customerEmail = safeString(order.customer?.email, 254).toLowerCase();
+    if (customerEmail) {
       try {
-        await sendEmail({ to: order.customer.email, type: 'order-status-user', data: { order: updated, name: order.customer.name, reference, status, receiptUrl: `${siteUrl()}/confirmation.html?reference=${encodeURIComponent(reference)}` } });
+        await sendEmail({
+          to: [customerEmail],
+          type: 'order-status-user',
+          data: { order: updated, name: order.customer?.name, reference, status, receiptUrl: `${siteUrl()}/confirmation.html?reference=${encodeURIComponent(reference)}` }
+        });
       } catch (emailError) {
         emailFailed = true;
         console.error('Customer order-status email could not be sent:', emailError.message);

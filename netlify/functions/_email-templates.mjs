@@ -92,11 +92,6 @@ export function emailTemplate(type, data = {}) {
     subject = `${copy.subject} · ${ref}`;
     html = layout({ eyebrow: 'ORDER UPDATE', title: copy.title, subtitle, body: `${details}<p>If you have questions about your order, reply to this email or contact our team.</p>`, buttonLabel: 'View receipt and order details', buttonUrl: data.receiptUrl });
     text = textVersion(copy.subject, subtitle, [`Reference: ${ref}`, `Status: ${status}`, `Fulfilment: ${fulfillmentMethod}`, `Scheduled for: ${scheduledLabel}`, `Address: ${fulfillmentAddress || 'To be confirmed'}`, ...(delivery.method === 'pickup' ? [`Pickup instructions: ${delivery.pickupInstructions || 'We will contact you when the order is ready.'}`] : [`Delivery note: ${delivery.deliveryNote || 'Delivery charges are confirmed separately after your location is reviewed.'}`]), `Paid total: ${total}`]);
-  } else if (type === 'order-status-admin') {
-    subject = `Order status updated · ${ref}`;
-    const subtitle = `Order ${ref} status has been changed to ${esc(data.status)}.`;
-    html = layout({ eyebrow: 'ORDER STATUS CHANGE', title: 'Store order updated.', subtitle, body: `${details}<p>Updated by: ${esc(data.updatedBy || 'Authorised store admin')}</p>`, buttonLabel: 'Open order management', buttonUrl: `${process.env.URL || process.env.SITE_URL || ''}/admin.html` });
-    text = textVersion('Order status updated', subtitle, [`Reference: ${ref}`, `Status: ${data.status}`]);
   } else {
     subject = 'Ayurèlle Organics update';
     const subtitle = 'A new update from Ayurèlle Organics.';
